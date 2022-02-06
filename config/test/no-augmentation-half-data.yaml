@@ -1,5 +1,5 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: default
+experiment-name: no-augmentation-half-data
 
 model:
   type: RNN
@@ -38,7 +38,7 @@ preprocessing:
     override: false
 
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: rvae-generate
+  augmentation: half-data
 
 downstream:
   #  tasks: [ best-fit-pdf]

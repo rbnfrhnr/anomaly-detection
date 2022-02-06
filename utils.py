@@ -1,21 +1,25 @@
 import os
 import time
-import numpy as np
-import scipy
+from pathlib import Path
+import datetime
+import yaml
+from tensorflow import keras
+from tensorflow.keras import layers
 from scipy.stats import norm
-import pickle
 import scipy.stats as st
 import pandas as pd
 from datetime import datetime
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn.preprocessing import LabelEncoder
 import numpy as np
 from sklearn.preprocessing import normalize
 import matplotlib.pyplot as plt
 from statsmodels.nonparametric.kde import KDEUnivariate
 import math
 import wandb
-import preprocessing as preproces
+from data import preprocessing as preproces
 from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
+
+from model.rvae import RVAE
 
 
 def recon_distribution(y):
@@ -102,7 +106,7 @@ def fetch_set(ctu_set):
 
 
 def save(frame, name):
-    frame.to_csv('~/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/' + name + '.csv')
+    frame.to_csv(name)
 
 
 def load(ctu_sets, cache_name, ignore_cached=False):
@@ -249,12 +253,54 @@ def add_noise(data):
     return data + noise
 
 
+def time_shift(data):
+    shp = data.shape
+    data = data.reshape(shp[0] * shp[-1], shp[1])
+    offset = math.ceil(5 / 2)
+    shifted = data[offset:, ]
+    count = math.floor(shifted.shape[0] / 5)
+    shifted = shifted[0:5 * count]
+    return shifted.reshape(count, shp[1], 5)
+
+
+def generate_from_rvae(data):
+    feature_dim = data.shape
+    latent_dim = 5
+
+    encoder_inputs = keras.Input(shape=(feature_dim[1], feature_dim[2]))
+    encoder_layers = layers.GRU(units=10)(encoder_inputs)
+    encoder_layers = layers.LeakyReLU(alpha=0.01)(encoder_layers)
+
+    latent_inputs = keras.Input(shape=(latent_dim))
+    decoder_layers = layers.Dense(feature_dim[2] * feature_dim[1])(latent_inputs)
+    decoder_layers = layers.Reshape((feature_dim[1], feature_dim[2]))(decoder_layers)
+    decoder_layers = layers.GRU(units=10, activation='relu', return_sequences=True)(decoder_layers)
+    decoder_layers = layers.Dense(5)(decoder_layers)
+
+    vae = RVAE(encoder_inputs, encoder_layers, latent_inputs, decoder_layers, kl_weight=0.75)
+    vae.compile(optimizer=keras.optimizers.Adam())
+
+    vae.fit(data, epochs=500, batch_size=128)
+    samples = np.random.normal(0, 1, (data.shape[0], 1, latent_dim))
+    augmented = np.array([vae.decoder.predict(sample) for sample in samples]).reshape(data.shape)
+    augmented = np.maximum(augmented, np.zeros(shape=augmented.shape))
+    return augmented
+
+
 def augment_reverse(data):
     return np.concatenate([data, reverse(data)])
 
 
 def augment_noise(data):
     return np.concatenate([data, add_noise(data)])
+
+
+def augment_time_shift(data):
+    return np.concatenate([data, time_shift(data)])
+
+
+def augment_rvae_generate(data):
+    return np.concatenate([data, generate_from_rvae(data)])
 
 
 def augment(data, type):
@@ -268,31 +314,21 @@ def augment(data, type):
     if type == 'reverse-replace':
         data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
         return augment_reverse(data)
+    if type == 'time-shift':
+        return augment_time_shift(data)
+    if type == 'rvae-generate':
+        return augment_rvae_generate(data)
+    if type == 'rvae-generate-half':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+        return augment_rvae_generate(data)
+    if type == 'half-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
     return data
 
 
-def predict(vae, dist_normal, dist_bot, X, abparams_norm=None, abparams_mal=None, axis=1):
-    chunk_size = 5000
+def predict(vae, downstream_model, X, axis=1):
     err, mu, log_sig = pred(vae, X, axis=axis)
-    if abparams_norm is not None and abparams_mal is not None:
-        abarg = abparams_norm[:-2]
-        abloc = abparams_norm[-2]
-        abscale = abparams_norm[-1]
-        abarg_mal = abparams_mal[:-2]
-        abloc_mal = abparams_mal[-2]
-        abscale_mal = abparams_mal[-1]
-        return np.array([dist_bot.pdf(er, loc=abloc_mal, scale=abscale_mal, *abarg_mal) > dist_normal.pdf(er, loc=abloc,
-                                                                                                          scale=abscale,
-                                                                                                          *abarg) for er
-                         in err]), err
-
-    # res = np.array(
-    #     [dist_bot.evaluate(err.values[pos:pos + chunk_size]) > dist_normal.evaluate(err.values[pos:pos + chunk_size]) for pos in
-    #      range(0, len(err), chunk_size)])
-    # return res
-    return np.array([dist_bot.evaluate(er) > dist_normal.evaluate(er) for er in err]), err
-    # return np.array([dist_bot.pdf(er) > dist_normal.pdf(er) for er in err]), err
-    # return dist_bot.evaluate(err.values) > dist_normal.evaluate(err.values)
+    return np.array([downstream_model.predict(er) for er in err]), err
 
 
 def best_fit_distribution(data, bins=200, ax=None):
@@ -390,8 +426,7 @@ def get_wandb_hist_data(recon_err_norm, recon_err_mal):
         hist_mal = data_mal[np.random.randint(data_mal.shape[0], size=size), :]
 
 
-def test_eval(test_data, vae, normal_dist, malicious_dist, abparams_norm, abparams_mal, scenario, file_prefix, run_id):
-    print('test eval for scenario ' + str(scenario) + ' \t' + ctu_nr_to_name[scenario])
+def simple_eval(test_data, vae, downstream_model):
     test_norm, test_bot = split_mal_norm(test_data)
     test_norm = remove_ylabel(test_norm)
     test_norm = reshape_for_rnn(test_norm.values)
@@ -399,8 +434,7 @@ def test_eval(test_data, vae, normal_dist, malicious_dist, abparams_norm, abpara
     test_bot = reshape_for_rnn(test_bot.values)
 
     y = np.concatenate((np.zeros(test_norm.shape[0]), np.ones(test_bot.shape[0])), axis=None)
-    preds, recon_err = predict(vae, normal_dist, malicious_dist, np.concatenate([test_norm, test_bot]),
-                               abparams_norm=abparams_norm, abparams_mal=abparams_mal, axis=(1, 2))
+    preds, recon_err = predict(vae, downstream_model, np.concatenate([test_norm, test_bot]), axis=(1, 2))
     preds = preds.astype(int).reshape(y.shape)
     conf_matrix = confusion_matrix(y, preds)
     prec = precision_score(y, preds)
@@ -412,9 +446,31 @@ def test_eval(test_data, vae, normal_dist, malicious_dist, abparams_norm, abpara
     print('f1: ' + str(f1))
     print(str(conf_matrix))
 
-    wandb.run.summary["Precision_scenario_" + str(scenario)] = prec
-    wandb.run.summary["Recall_scenario_" + str(scenario)] = recall
-    wandb.run.summary["F1_scenario_" + str(scenario)] = f1
+
+def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, task, config):
+    print('test eval for scenario ' + str(scenario))
+    test_norm, test_bot = split_mal_norm(test_data)
+    test_norm = remove_ylabel(test_norm)
+    test_norm = reshape_for_rnn(test_norm.values)
+    test_bot = remove_ylabel(test_bot)
+    test_bot = reshape_for_rnn(test_bot.values)
+
+    y = np.concatenate((np.zeros(test_norm.shape[0]), np.ones(test_bot.shape[0])), axis=None)
+    preds, recon_err = predict(vae, downstream_model, np.concatenate([test_norm, test_bot]), axis=(1, 2))
+    preds = preds.astype(int).reshape(y.shape)
+    conf_matrix = confusion_matrix(y, preds)
+    prec = precision_score(y, preds)
+    recall = recall_score(y, preds)
+    f1 = f1_score(y, preds)
+    print('#normal: ' + str(test_norm.shape[0]) + ' / #bot: ' + str(test_bot.shape[0]))
+    print('prec:' + str(prec))
+    print('rec:' + str(recall))
+    print('f1: ' + str(f1))
+    print(str(conf_matrix))
+
+    wandb.run.summary["Precision_task_" + task + "_scenario_" + str(scenario)] = prec
+    wandb.run.summary["Recall_task_" + task + "_scenario_" + str(scenario)] = recall
+    wandb.run.summary["F1_task_" + task + "_scenario_" + str(scenario)] = f1
     wandb.sklearn.plot_confusion_matrix(y, preds, ['normal', 'botnet'])
     hist_data = np.stack([recon_err, y], axis=1)
 
@@ -426,21 +482,75 @@ def test_eval(test_data, vae, normal_dist, malicious_dist, abparams_norm, abpara
     if hist_mal.shape[0] > 5000:
         hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
 
-    table_name = 'reconstruction-error-test-scenario-' + str(scenario) + '-' + ctu_nr_to_name[scenario]
+    table_name = 'reconstruction-error-test-taks-' + task + '_scenario-' + str(scenario)
     wandb.log(
         {table_name: wandb.Table(
             data=np.concatenate([hist_norm, hist_mal]).tolist(),
             columns=['reconstruction-error', 'label'])})
     log = pd.DataFrame(columns=['recon-err', 'prediction', 'label'], data=np.stack([recon_err, preds, y], axis=1))
-    log_name = file_prefix + '-' + run_id + '-' + str(scenario) + '-' + ctu_nr_to_name[scenario]
-    log.to_csv('./runs/' + log_name + '.csv')
+    log_name = file_prefix + '-reconstruction-error-' + str(scenario)
+    log.to_csv(config['run-dir'] + '/downstream-task/' + task + '/' + log_name + '.csv')
+
+
+def read_cfg(cfg_file):
+    cfg = None
+    with open(cfg_file) as file:
+        cfg = yaml.load(file, Loader=yaml.FullLoader)
+    if cfg is None:
+        print('no cfg present')
+    return cfg
+
+
+def setup_run(cfg):
+    d = datetime.today()
+    cfg['run-id'] = cfg['experiment-name'] + '-' + d.strftime("%Y-%m-%d-%H-%M-%S")
+    cfg['run-dir'] = "./runs/" + cfg['experiment-name'] + '/' + cfg['run-id']
+    Path(cfg['run-dir']).mkdir(parents=True, exist_ok=True)
+    return cfg
+
+
+def create_autoencoder(cfg, feature_dim=None, **kwargs):
+    sub_type = cfg['sub-type']
+    latent_dim = cfg['config']['latent-dimension']
+    enc_layers = cfg['config']['encoding-layers']
+    dec_layers = cfg['config']['decoding-layers']
+    optimizer = cfg['config']['optimizer']['class-name']
+    # optimizer_args = cfg['config']['optimizer']['args']
+    optimizer_args = {}
+
+    encoder_inputs = keras.Input(shape=(feature_dim[1], feature_dim[2]))
+    encoder_layers = getattr(layers, enc_layers[0]['class-name'])(**enc_layers[0]['arguments'])(encoder_inputs)
+    for layer in enc_layers[1:]:
+        encoder_layers = getattr(layers, layer['class-name'])(**layer['arguments'])(encoder_layers)
+
+    latent_inputs = keras.Input(shape=(latent_dim))
+    decoder_layers = layers.Dense(feature_dim[2] * feature_dim[1])(latent_inputs)
+    decoder_layers = layers.Reshape((feature_dim[1], feature_dim[2]))(decoder_layers)
+    for layer in dec_layers:
+        decoder_layers = getattr(layers, layer['class-name'])(**layer['arguments'])(decoder_layers)
+    decoder_layers = layers.Dense(feature_dim[2])(decoder_layers)
+
+    vae = RVAE(encoder_inputs, encoder_layers, latent_inputs, decoder_layers)
+    vae.compile(optimizer=getattr(keras.optimizers, optimizer)(**optimizer_args))
+    return vae
+
+
+def create_model(cfg, **kwargs):
+    model_type = cfg['model']['type']
+    if model_type == 'autoencoder':
+        return create_autoencoder(cfg['model'], **kwargs)
+    return None
 
 
 if __name__ == '__main__':
-    train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
-    test_sets = [1, 2, 6, 8, 9]
-    train = load(train_sets, 'train-def-medium', True)
+    config = read_cfg('./config/template.yaml')
+    model = create_model(config, **{'feature_dim': (None, 23, 5)})
+    print(model.summary())
+
+    # train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
+    # test_sets = [1, 2, 6, 8, 9]
+    # train = load(train_sets, 'train-def-medium', True)
     # test = data[~msk]
-    test = load(test_sets, 'test-def-medium', True)
-    test_scenarios = {scenario: load([scenario], 'scenario-test-medium-' + str(scenario), True) for scenario in
-                      test_sets}
+    # test = load(test_sets, 'test-def-medium', True)
+    # test_scenarios = {scenario: load([scenario], 'scenario-test-medium-' + str(scenario), True) for scenario in
+    #                   test_sets}

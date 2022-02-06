@@ -118,7 +118,7 @@ def preprocess_stat_CTU(df):
     return df_fill_oh
 
 
-def preprocess_stat_2_CTU(df, period_len, rm_ntp):
+def preprocess_stat_2_CTU(df, period_len=60, rm_ntp=False):
     '''medium dataset
        stat(1 min) 
        use port, ip addr'''

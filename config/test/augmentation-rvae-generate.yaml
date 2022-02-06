@@ -1,5 +1,5 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: default
+experiment-name: augmentation-rvae-generate
 
 model:
   type: RNN

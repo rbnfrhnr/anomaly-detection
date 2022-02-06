@@ -1,20 +1,14 @@
-import tensorflow as tf
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
-import preprocessing as preproces
-from model.vae import VAE, Sampling
+from model.vae import VAE
 import matplotlib.pyplot as plt
 import wandb
 from wandb.keras import WandbCallback
 import pandas as pd
 import utils
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder
-from sklearn.preprocessing import normalize
-from statsmodels.nonparametric.kde import KDEUnivariate
 import sys
-from scipy.stats import mannwhitneyu, wilcoxon
-from sklearn.metrics import f1_score, confusion_matrix, precision_recall_fscore_support, precision_score, recall_score
+from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
 import scipy.stats as st
 
 if __name__ == '__main__':

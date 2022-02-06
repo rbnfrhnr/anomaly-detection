@@ -1,8 +1,29 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: default
+experiment-name: template
 
 model:
-  type: RNN
+  type: autoencoder
+  sub-type: RNN
+
+  # specific to model-type and sub-type
+  config:
+    latent-dimension: 5
+    encoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+      - class-name: LeakyReLU
+        arguments:
+          alpha: 0.1
+    decoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+          return_sequences: True
+    optimizer:
+      class-name: Adam
+#      args:
+
 
 autoencoder:
   latent-dim: 5
@@ -38,7 +59,7 @@ preprocessing:
     override: false
 
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: rvae-generate
+  augmentation: None
 
 downstream:
   #  tasks: [ best-fit-pdf]
