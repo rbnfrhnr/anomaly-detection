@@ -26,7 +26,9 @@ if __name__ == '__main__':
     downstream_tasks = config['downstream']['tasks']
     wandb_group_name = config['experiment-name']
     augment_type = config['preprocessing']['augmentation']
-    wandb.init(project="ctu-13-augment-test", entity="lbl-crd",
+    wandb_project = config['logging']['wandb']['project']
+    wandb_entity = config['logging']['wandb']['entity']
+    wandb.init(project=wandb_project, entity=wandb_entity,
                group=str(wandb_group_name))
 
     run_id = config['run-id']
@@ -63,6 +65,15 @@ if __name__ == '__main__':
     x = np.concatenate([err_normal_train, err_bot_train], axis=None)
     train_recon_errors = pd.DataFrame(columns=['recon-err', 'label'], data=np.array([x, y]).T)
     train_recon_errors.to_csv(config['run-dir'] + '/train-reconstruction-errors.csv')
+
+    wandb_hist_norm, wandb_hist_mal = utils.get_wandb_hist_data(err_normal_train, err_bot_train)
+    wandb_hist_norm = np.stack([wandb_hist_norm, np.zeros(wandb_hist_norm.shape[0])], axis=1)
+    wandb_hist_mal = np.stack([wandb_hist_mal, np.ones(wandb_hist_mal.shape[0])], axis=1)
+    table_name = 'reconstruction-error-train'
+    wandb.log(
+        {table_name: wandb.Table(
+            data=np.concatenate([wandb_hist_norm, wandb_hist_mal]).tolist(),
+            columns=['reconstruction-error', 'label'])})
 
     for task in downstream_tasks:
         task_dir = config['run-dir'] + '/downstream-task/' + task

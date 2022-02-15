@@ -1,9 +1,5 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: template
-
-# sets random seeds for reproducibility
-# see https://stackoverflow.com/a/52897216
-global-seed:
+experiment-name: augmentation-time-shift-5-sec
 
 model:
   type: autoencoder
@@ -41,20 +37,21 @@ data:
   train-ctu-sets: [ 3, 4, 5, 7, 10, 11, 12, 13 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
-    all: [ 1, 2, 6, 8, 9 ]
-    ctu-1-2-9: [ 1, 2, 9 ]
-    ctu-1: [ 1 ]
-    ctu-2: [ 2 ]
-    ctu-6: [ 6 ]
-    ctu-8: [ 8 ]
-    ctu-9: [ 9 ]
+    all-sec-5: [ 1, 2, 6, 8, 9 ]
+    ctu-1-2-9-sec-5: [ 1, 2, 9 ]
+    all-incl-training-sec-5: [ 1,2,3,4,5,6,7,8,9,10,11,12,13 ]
+    ctu-1-sec-5: [ 1 ]
+    ctu-2-sec-5: [ 2 ]
+    ctu-6-sec-5: [ 6 ]
+    ctu-8-sec-5: [ 8 ]
+    ctu-9-sec-5: [ 9 ]
 
 preprocessing:
   # small, medium, large (see preprocessing.py)
   type: medium
   # const params for specific preprocessing method. will be passed as **kwargs
   params:
-    period_len: 60
+    period_len: 5
     rm_ntp: false
 
   # preprocessed datasets are 'cached' as csv files
@@ -63,7 +60,7 @@ preprocessing:
     override: false
 
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: None
+  augmentation: time-shift
 
 downstream:
   #  tasks: [ best-fit-pdf]

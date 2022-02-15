@@ -1,3 +1,4 @@
+import random
 import os
 import time
 from pathlib import Path
@@ -18,6 +19,8 @@ import math
 import wandb
 from data import preprocessing as preproces
 from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
+import tensorflow as tf
+from keras import backend as K
 
 from model.rvae import RVAE
 
@@ -176,7 +179,7 @@ def remove_ylabel(frame):
 
 def reshape_for_rnn(frame, number_of_slice=5):
     count_x = math.floor(frame.shape[0] / number_of_slice)
-    return frame[0:number_of_slice * count_x].reshape(count_x, frame.shape[1], number_of_slice)
+    return frame[0:number_of_slice * count_x].reshape(count_x, number_of_slice, frame.shape[1])
 
 
 def blocked_mal_normal(X, bin_size):
@@ -255,12 +258,12 @@ def add_noise(data):
 
 def time_shift(data):
     shp = data.shape
-    data = data.reshape(shp[0] * shp[-1], shp[1])
+    data = data.reshape(shp[0] * shp[1], shp[-1])
     offset = math.ceil(5 / 2)
     shifted = data[offset:, ]
     count = math.floor(shifted.shape[0] / 5)
     shifted = shifted[0:5 * count]
-    return shifted.reshape(count, shp[1], 5)
+    return shifted.reshape(count, 5, shp[-1])
 
 
 def generate_from_rvae(data):
@@ -275,7 +278,7 @@ def generate_from_rvae(data):
     decoder_layers = layers.Dense(feature_dim[2] * feature_dim[1])(latent_inputs)
     decoder_layers = layers.Reshape((feature_dim[1], feature_dim[2]))(decoder_layers)
     decoder_layers = layers.GRU(units=10, activation='relu', return_sequences=True)(decoder_layers)
-    decoder_layers = layers.Dense(5)(decoder_layers)
+    decoder_layers = layers.Dense(23)(decoder_layers)
 
     vae = RVAE(encoder_inputs, encoder_layers, latent_inputs, decoder_layers, kl_weight=0.75)
     vae.compile(optimizer=keras.optimizers.Adam())
@@ -314,7 +317,22 @@ def augment(data, type):
     if type == 'reverse-replace':
         data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
         return augment_reverse(data)
+    if type == 'reverse-fifth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
+        return augment_reverse(data)
+    if type == 'reverse-tenth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
+        return augment_reverse(data)
     if type == 'time-shift':
+        return augment_time_shift(data)
+    if type == 'time-shift-half':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+        return augment_time_shift(data)
+    if type == 'time-shift-fifth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
+        return augment_time_shift(data)
+    if type == 'time-shift-tenth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
         return augment_time_shift(data)
     if type == 'rvae-generate':
         return augment_rvae_generate(data)
@@ -323,6 +341,10 @@ def augment(data, type):
         return augment_rvae_generate(data)
     if type == 'half-data':
         return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+    if type == 'fifth-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
+    if type == 'tenth-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
     return data
 
 
@@ -414,16 +436,13 @@ def plot_train_hist(recon_err_norm, recon_err_mal, title, log_wandb=True):
     pass
 
 
-def get_wandb_hist_data(recon_err_norm, recon_err_mal):
-    data_norm = np.stack([recon_err_norm, np.zeros(recon_err_norm.shape)], axis=1)
-    data_mal = np.stack([recon_err_mal, np.zeros(recon_err_mal.shape)], axis=1)
+def get_wandb_hist_data(hist_norm, hist_mal):
+    if hist_norm.shape[0] > 5000:
+        hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000), :]
 
-    if data_norm.shape[0] > 5000:
-        data_norm = data_norm[np.random.randint(data_norm.shape[0], size=5000), :]
-
-    size = 1000 - math.min(data_norm.shape[0], 5000)
-    if data_mal.shape[0] > 5000:
-        hist_mal = data_mal[np.random.randint(data_mal.shape[0], size=size), :]
+    if hist_mal.shape[0] > 5000:
+        hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
+    return hist_norm, hist_mal
 
 
 def simple_eval(test_data, vae, downstream_model):
@@ -492,6 +511,33 @@ def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, t
     log.to_csv(config['run-dir'] + '/downstream-task/' + task + '/' + log_name + '.csv')
 
 
+def set_seeds(cfg):
+    # Seed value
+    default_seed = int(round(999999 * random.random()) + 1)
+    seed_value = cfg['global-seed'] if 'global-seed' in cfg else None
+    seed_value = seed_value if seed_value is not None else default_seed
+    cfg['global-seed'] = seed_value
+
+    # 1. Set the `PYTHONHASHSEED` environment variable at a fixed value
+    os.environ['PYTHONHASHSEED'] = str(seed_value)
+
+    # 2. Set the `python` built-in pseudo-random generator at a fixed value
+    random.seed(seed_value)
+
+    # 3. Set the `numpy` pseudo-random generator at a fixed value
+    np.random.seed(seed_value)
+
+    # 4. Set the `tensorflow` pseudo-random generator at a fixed value
+    tf.random.set_seed(seed_value)
+    # for later versions:
+    tf.compat.v1.set_random_seed(seed_value)
+
+    # 5. Configure a new global `tensorflow` session
+    session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+    sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
+    tf.compat.v1.keras.backend.set_session(sess)
+
+
 def read_cfg(cfg_file):
     cfg = None
     with open(cfg_file) as file:
@@ -501,11 +547,19 @@ def read_cfg(cfg_file):
     return cfg
 
 
+def save_cfg(cfg):
+    run_dir = cfg['run-dir']
+    with open(r'' + run_dir + '/run-config.yaml', 'w') as file:
+        documents = yaml.dump(cfg, file)
+
+
 def setup_run(cfg):
     d = datetime.today()
     cfg['run-id'] = cfg['experiment-name'] + '-' + d.strftime("%Y-%m-%d-%H-%M-%S")
     cfg['run-dir'] = "./runs/" + cfg['experiment-name'] + '/' + cfg['run-id']
     Path(cfg['run-dir']).mkdir(parents=True, exist_ok=True)
+    set_seeds(cfg)
+    save_cfg(cfg)
     return cfg
 
 
@@ -544,9 +598,9 @@ def create_model(cfg, **kwargs):
 
 if __name__ == '__main__':
     config = read_cfg('./config/template.yaml')
-    model = create_model(config, **{'feature_dim': (None, 23, 5)})
-    print(model.summary())
-
+    config = setup_run(config)
+    # model = create_model(config, **{'feature_dim': (None, 23, 5)})
+    # print(model.summary())
     # train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
     # test_sets = [1, 2, 6, 8, 9]
     # train = load(train_sets, 'train-def-medium', True)

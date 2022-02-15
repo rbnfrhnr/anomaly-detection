@@ -38,6 +38,14 @@ class BestFitPdfDownstream(keras.Model):
                                      *self.mal_pdf_params[:-2])
         return mal_score > norm_score
 
+    def predict_norm(self, x):
+        return self.norm_pdf.pdf(x, loc=self.norm_pdf_params[-2], scale=self.norm_pdf_params[-1],
+                                 *self.norm_pdf_params[:-2])
+
+    def predict_mal(self, x):
+        return self.mal_pdf.pdf(x, loc=self.mal_pdf_params[-2], scale=self.mal_pdf_params[-1],
+                                *self.mal_pdf_params[:-2])
+
 
 if __name__ == '__main__':
     model = BestFitPdfDownstream()

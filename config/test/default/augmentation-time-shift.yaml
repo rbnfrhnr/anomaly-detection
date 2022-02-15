@@ -1,8 +1,29 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: augmentation-gaussian-noise-kde-bf
+experiment-name: augmentation-time-shift
 
 model:
-  type: RNN
+  type: autoencoder
+  sub-type: RNN
+
+  # specific to model-type and sub-type
+  config:
+    latent-dimension: 5
+    encoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+      - class-name: LeakyReLU
+        arguments:
+          alpha: 0.1
+    decoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+          return_sequences: True
+    optimizer:
+      class-name: Adam
+#      args:
+
 
 autoencoder:
   latent-dim: 5
@@ -39,7 +60,7 @@ preprocessing:
     override: false
 
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: noise
+  augmentation: time-shift
 
 downstream:
   #  tasks: [ best-fit-pdf]
@@ -53,5 +74,5 @@ logging:
 
 
   wandb:
-    project: ctu-13-augment-test
+    project: ctu-13-augment
     entity: lbl-crd
