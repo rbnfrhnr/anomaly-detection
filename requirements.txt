@@ -119,10 +119,12 @@ tensorboard-data-server==0.6.1
 tensorboard-plugin-wit==1.8.1
 tensorflow==2.7.0
 tensorflow-estimator==2.7.0
+tensorflow-gpu==2.8.0
 tensorflow-io-gcs-filesystem==0.23.1
 termcolor==1.1.0
 terminado==0.12.1
 testpath==0.5.0
+tf-estimator-nightly==2.8.0.dev2021122109
 threadpoolctl==3.0.0
 tomli==1.2.3
 torch==1.10.1

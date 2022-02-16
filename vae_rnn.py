@@ -9,16 +9,21 @@ import pandas as pd
 import scipy.stats as st
 from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
 from tensorflow import keras
+from keras import backend
 from tensorflow.keras import layers
 from wandb.keras import WandbCallback
 from data import loader
 from downstream import downstream_factory
+import tensorflow as tf
 
 import utils
 import wandb
 from model.rvae import RVAE
 
 if __name__ == '__main__':
+    print(backend._get_available_gpus())
+    sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+    backend.set_session(sess)
     config_file = sys.argv[1]
     config = utils.read_cfg(config_file)
     config = utils.setup_run(config)
