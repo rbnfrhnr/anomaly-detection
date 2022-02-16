@@ -8,8 +8,8 @@ EXPOSE 8745
 RUN apt update -y
 RUN apt upgrade -y
 RUN apt install wget -y
-RUN apt-get install -y python3.8 \
-    && ln -s /usr/bin/python3.8 /usr/bin/python3
+RUN apt install software-properties-common -y
+RUN apt-get install -y python3.8 && ln -s /usr/bin/python3.8 /usr/bin/python3
 RUN apt install tzdata -y
 RUN ./cuda-setup.sh
 RUN apt install python3-pip -y
