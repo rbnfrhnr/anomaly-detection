@@ -32,7 +32,7 @@ def load(config):
         if os.path.isfile(cache_file) and not override_cache:
             test_group_data[test_group] = pd.read_csv(cache_file, index_col=0)
         else:
-            test_group_data[test_group] = pd.concat([fetch_set(ctu_set) for ctu_set in test_groups[test_group]])
+            test_group_data[test_group] = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
             test_group_data[test_group] = preprocessing.preprocess_stat_2_CTU(test_group_data[test_group],
                                                                               **preprcs_params)
             utils.save(test_group_data[test_group], cache_file)
