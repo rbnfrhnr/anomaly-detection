@@ -4,8 +4,8 @@ import utils
 from data import preprocessing
 
 
-def fetch_set(ctu_set):
-    return pd.read_csv('~/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/' + str(ctu_set) + '/' + utils.files[ctu_set - 1])
+def fetch_set(ctu_set, filepath):
+    return pd.read_csv(filepath + str(ctu_set) + '/' + utils.files[ctu_set - 1])
 
 
 def load(config):
@@ -22,7 +22,7 @@ def load(config):
     if os.path.isfile(train_cache_file) and not override_cache:
         train = pd.read_csv(train_cache_file, index_col=0)
     else:
-        train = pd.concat([fetch_set(ctu_set) for ctu_set in train_sets])
+        train = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in train_sets])
         train = preprocessing.preprocess_stat_2_CTU(train, **preprcs_params)
         utils.save(train, train_cache_file)
 

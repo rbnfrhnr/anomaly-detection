@@ -104,32 +104,9 @@ def n_second_slices(d, n):
     return slices
 
 
-def fetch_set(ctu_set):
-    return pd.read_csv('~/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/' + str(ctu_set) + '/' + files[ctu_set - 1])
-
-
 def save(frame, name):
     frame.to_csv(name)
 
-
-def load(ctu_sets, cache_name, ignore_cached=False):
-    file = '/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/' + cache_name + '.csv'
-    if os.path.isfile(os.path.expanduser(
-            "~") + file) and not ignore_cached:
-        return pd.read_csv('~' + file, index_col=0)
-    else:
-        data = fetch_set(ctu_sets[0])
-        for ctu_set in ctu_sets[1:]:
-            data = pd.concat([data, fetch_set(ctu_set)])
-        data = preproces.preprocess_stat_2_CTU(data, 60, False)
-        # data = preproces.preprocess_stat_CTU(data)
-        # data = preproces.preprocess_CTU(data)
-        save(data, cache_name)
-        return data
-
-
-def load_all(ignore_cached=False):
-    return load(range(1, 14), 'all', ignore_cached)
 
 
 def patch_set(ctu_data):
@@ -597,13 +574,12 @@ def create_model(cfg, **kwargs):
 
 
 if __name__ == '__main__':
-    config = read_cfg('./config/template.yaml')
-    config = setup_run(config)
+    # config = read_cfg('./config/template.yaml')
+    # config = setup_run(config)
     # model = create_model(config, **{'feature_dim': (None, 23, 5)})
     # print(model.summary())
-    # train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
+    train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
     # test_sets = [1, 2, 6, 8, 9]
-    # train = load(train_sets, 'train-def-medium', True)
     # test = data[~msk]
     # test = load(test_sets, 'test-def-medium', True)
     # test_scenarios = {scenario: load([scenario], 'scenario-test-medium-' + str(scenario), True) for scenario in
