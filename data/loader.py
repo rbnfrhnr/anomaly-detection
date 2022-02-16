@@ -23,7 +23,7 @@ def load(config):
         train = pd.read_csv(train_cache_file, index_col=0)
     else:
         train = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in train_sets])
-        train = preprocessing.preprocess_stat_2_CTU(train, **preprcs_params)
+        train = preprocessing.preprocess_stat_CTU(train, **preprcs_params)
         utils.save(train, train_cache_file)
 
     test_group_data = {}
@@ -32,9 +32,10 @@ def load(config):
         if os.path.isfile(cache_file) and not override_cache:
             test_group_data[test_group] = pd.read_csv(cache_file, index_col=0)
         else:
-            test_group_data[test_group] = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
-            test_group_data[test_group] = preprocessing.preprocess_stat_2_CTU(test_group_data[test_group],
-                                                                              **preprcs_params)
+            test_group_data[test_group] = pd.concat(
+                [fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
+            test_group_data[test_group] = preprocessing.preprocess_stat_CTU(test_group_data[test_group],
+                                                                            **preprcs_params)
             utils.save(test_group_data[test_group], cache_file)
 
     d = [test_group_data[d].columns.values for d in test_group_data.keys()]

@@ -63,7 +63,7 @@ def preprocess_CTU(df):
     return df_fill_oh
 
 
-def preprocess_stat_CTU(df):
+def preprocess_stat_CTU(df, **kwargs):
     '''large dataset
        stat & connection info'''
     df = df.reset_index(drop=True)
