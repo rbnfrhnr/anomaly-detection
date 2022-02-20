@@ -8,6 +8,17 @@ def fetch_set(ctu_set, filepath):
     return pd.read_csv(filepath + str(ctu_set) + '/' + utils.files[ctu_set - 1])
 
 
+def get_preprocess_method(preprocess_type='medium'):
+    if preprocess_type == 'medium':
+        return lambda data, **kwargs: preprocessing.preprocess_stat_2_CTU(data, **kwargs)
+    if preprocess_type == 'large':
+        return lambda data, **kwargs: preprocessing.preprocess_stat_CTU(data, **kwargs)
+    if preprocess_type == 'connection-only':
+        return lambda data, **kwargs: preprocessing.preprocess_CTU(data, **kwargs)
+    if preprocess_type == 'stat-3':
+        return lambda data, **kwargs: preprocessing.preprocess_stat_3(data, **kwargs)
+
+
 def load(config):
     data_location = config['data']['location']
     cache_location = config['preprocessing']['cache']['location']
@@ -18,12 +29,13 @@ def load(config):
     test_group_cache_suffix = '-test-' + config['preprocessing']['type']
     train_cache_file = cache_location + train_cache_name + '.csv'
     preprcs_params = config['preprocessing']['params']
+    preprocess_method = get_preprocess_method(config['preprocessing']['type'])
 
     if os.path.isfile(train_cache_file) and not override_cache:
         train = pd.read_csv(train_cache_file, index_col=0)
     else:
         train = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in train_sets])
-        train = preprocessing.preprocess_stat_CTU(train, **preprcs_params)
+        train = preprocess_method(train, **preprcs_params)
         utils.save(train, train_cache_file)
 
     test_group_data = {}
@@ -34,8 +46,8 @@ def load(config):
         else:
             test_group_data[test_group] = pd.concat(
                 [fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
-            test_group_data[test_group] = preprocessing.preprocess_stat_CTU(test_group_data[test_group],
-                                                                            **preprcs_params)
+            test_group_data[test_group] = preprocess_method(test_group_data[test_group],
+                                                            **preprcs_params)
             utils.save(test_group_data[test_group], cache_file)
 
     d = [test_group_data[d].columns.values for d in test_group_data.keys()]

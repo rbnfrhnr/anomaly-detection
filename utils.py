@@ -1,34 +1,21 @@
-import random
-import os
-import time
-from pathlib import Path
 import datetime
+import math
+import os
+import random
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import scipy.stats as st
+import tensorflow as tf
 import yaml
+from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
 from tensorflow import keras
 from tensorflow.keras import layers
-from scipy.stats import norm
-import scipy.stats as st
-import pandas as pd
-from datetime import datetime
-from sklearn.preprocessing import LabelEncoder
-import numpy as np
-from sklearn.preprocessing import normalize
-import matplotlib.pyplot as plt
-from statsmodels.nonparametric.kde import KDEUnivariate
-import math
+
 import wandb
-from data import preprocessing as preproces
-from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
-import tensorflow as tf
-from keras import backend as K
-
 from model.rvae import RVAE
-
-
-def recon_distribution(y):
-    param = norm.fit(y)
-    return param
-
 
 files = [
     'capture20110810.binetflow',
@@ -67,79 +54,8 @@ features = ['Dur', 'Proto', 'SrcAddr', 'Sport', 'Dir', 'DstAddr', 'Dport', 'Stat
             'SrcBytes']
 
 
-def get_feature_shape(without_ip):
-    return len(get_feature_names(without_ip))
-
-
-def get_feature_names(without_ip):
-    if without_ip:
-        return ['Dur', 'Proto', 'Sport', 'Dir', 'DstAddr', 'Dport', 'State', 'sTos', 'dTos', 'TotPkts',
-                'TotBytes',
-                'SrcBytes']
-    else:
-        return ['Dur', 'Proto', 'SrcAddr', 'Sport', 'Dir', 'DstAddr', 'Dport', 'State', 'sTos', 'dTos', 'TotPkts',
-                'TotBytes',
-                'SrcBytes']
-
-
-def bin_size_for_time_interval(data, seconds=30):
-    first = data.iloc[0]
-    last = data.iloc[-1]
-
-    duration = last['date'] - first['date']
-    return int(duration.seconds / seconds)
-
-
-def n_second_slices(d, n):
-    slices = []
-    current_start_time = d.iloc[0]['date']
-    current_slice = pd.DataFrame(columns=d.columns)
-
-    start_idx = 0
-    for idx, row in d.iterrows():
-        if (row['date'] - d.iloc[start_idx]['date']).seconds > n:
-            slices.append(d.iloc[start_idx:idx])
-            start_idx = idx
-
-    return slices
-
-
 def save(frame, name):
     frame.to_csv(name)
-
-
-
-def patch_set(ctu_data):
-    ctu_data['bot'] = ctu_data['Label'].apply(lambda label: 'bot' in label.lower())
-    ctu_data['date'] = ctu_data['StartTime'].apply(lambda ts: datetime.strptime(ts, '%Y/%m/%d %H:%M:%S.%f'))
-    return ctu_data
-
-
-def feature_selection(ctu_data):
-    # return ctu_data[
-    #     ['Dur', 'Proto', 'SrcAddr', 'Sport', 'Dir', 'DstAddr', 'Dport', 'State', 'sTos', 'dTos', 'TotPkts', 'TotBytes',
-    #      'SrcBytes', 'date']]
-
-    return ctu_data[features]
-
-
-def split_mixed(data, bin_size, shift=0):
-    pass
-
-
-def encode_labels(ctu_data):
-    for cat_var in ['Proto', 'SrcAddr', 'Dir', 'DstAddr', 'State']:
-        le = LabelEncoder()
-        ctu_data[cat_var] = le.fit_transform(ctu_data[cat_var])
-    return ctu_data
-
-
-def clean_normalize(ctu_data):
-    ctu_data[features] = ctu_data[features].apply(pd.to_numeric, errors='coerce')
-    ctu_data = ctu_data[~np.isnan(ctu_data[features]).any(axis=1)]
-    normed = ctu_data
-    normed[features] = normalize(ctu_data[features])
-    return normed
 
 
 def split_mal_norm(ctu_data):
@@ -159,60 +75,9 @@ def reshape_for_rnn(frame, number_of_slice=5):
     return frame[0:number_of_slice * count_x].reshape(count_x, number_of_slice, frame.shape[1])
 
 
-def blocked_mal_normal(X, bin_size):
-    normal_flows = []
-    malicious_flows = []
-
-    for idx in range(0, int(X.shape[0] / bin_size)):
-        block = X.iloc[idx * bin_size: idx * bin_size + bin_size]
-        is_malicious = True if block[block['bot'] == True].shape[0] != 0 else False
-
-        if is_malicious:
-            malicious_flows.append(block[features].values)
-        else:
-            normal_flows.append(block[features].values)
-    normal_flows = np.array(normal_flows)
-    normal_flows = normal_flows.reshape(normal_flows.shape[0], normal_flows.shape[1], normal_flows.shape[2], 1)
-    malicious_flows = np.array(malicious_flows)
-    malicious_flows = malicious_flows.reshape(malicious_flows.shape[0], malicious_flows.shape[1],
-                                              malicious_flows.shape[2], 1)
-    return normal_flows, malicious_flows
-
-
 # calculate the kl divergence
 def kl_divergence(p, q):
     return sum(p[i] * (math.log(p[i] / q[i]) if q[i] > 0 and p[i] > 0 else 0) for i in range(len(p)))
-
-
-def blocked_evaluation(vae, X, bin_size):
-    normal_flows, malicious_flows = blocked_mal_normal(X, bin_size)
-    err_norm, mu_norm, log_sig = pred(vae, normal_flows)
-    err_mal, mu_mal, log_sig = pred(vae, malicious_flows)
-
-    plt.scatter(mu_norm[:, 0], mu_norm[:, 1], label='encoded - normal flows')
-    plt.scatter(mu_mal[:, 0], mu_mal[:, 1], color=['orange' for i in range(0, mu_mal.shape[0])],
-                label='encoded - malicious flows')
-    plt.show()
-
-    plt.hist(err_norm, bins=100, label='normal')
-    plt.hist(err_mal, bins=100, label='contains anomaly')
-    plt.legend()
-    plt.show()
-
-    kde_n = KDEUnivariate(err_norm)
-    kde_n.fit()
-
-    kde_an = KDEUnivariate(err_mal)
-    kde_an.fit()
-
-    xs = np.linspace(0, max(err_norm.max(), err_mal.max()), 750)
-    ys_n = kde_n.evaluate(xs)
-    ys_an = kde_an.evaluate(xs)
-
-    plt.plot(xs, ys_n, label='normal')
-    plt.plot(xs, ys_an, label='contains anomaly')
-    plt.legend()
-    plt.show()
 
 
 def pred(vae, X, axis=1):
@@ -327,7 +192,7 @@ def augment(data, type):
 
 def predict(vae, downstream_model, X, axis=1):
     err, mu, log_sig = pred(vae, X, axis=axis)
-    return np.array([downstream_model.predict(er) for er in err]), err
+    return downstream_model.predict(err)
 
 
 def best_fit_distribution(data, bins=200, ax=None):
@@ -395,52 +260,15 @@ def best_fit_distribution(data, bins=200, ax=None):
     return (best_distribution.name, best_params)
 
 
-def plot_train_hist(recon_err_norm, recon_err_mal, title, log_wandb=True):
-    plt.hist(recon_err_norm, bins=200, color='green')
-    plt.hist(recon_err_mal, bins=200, color='red')
-    plt.title('title')
-    plt.xlabel('Error (MSE)')
-    plt.ylabel('Count')
-    plt.show()
-
-    data_norm = np.stack([recon_err_norm, np.zeros(recon_err_norm.shape)], axis=1)
-    data_mal = np.stack([recon_err_mal, np.zeros(recon_err_mal.shape)], axis=1)
-
-    wandb.log(
-        {'reconstruction-error-test': wandb.Table(data=np.concatenate([data_norm, data_mal]).tolist(),
-                                                  columns=['reconstruction-error', 'label'])})
-
-    pass
-
-
 def get_wandb_hist_data(hist_norm, hist_mal):
     if hist_norm.shape[0] > 5000:
-        hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000), :]
+        # hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000), :]
+        hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000)]
 
     if hist_mal.shape[0] > 5000:
-        hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
+        # hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
+        hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000)]
     return hist_norm, hist_mal
-
-
-def simple_eval(test_data, vae, downstream_model):
-    test_norm, test_bot = split_mal_norm(test_data)
-    test_norm = remove_ylabel(test_norm)
-    test_norm = reshape_for_rnn(test_norm.values)
-    test_bot = remove_ylabel(test_bot)
-    test_bot = reshape_for_rnn(test_bot.values)
-
-    y = np.concatenate((np.zeros(test_norm.shape[0]), np.ones(test_bot.shape[0])), axis=None)
-    preds, recon_err = predict(vae, downstream_model, np.concatenate([test_norm, test_bot]), axis=(1, 2))
-    preds = preds.astype(int).reshape(y.shape)
-    conf_matrix = confusion_matrix(y, preds)
-    prec = precision_score(y, preds)
-    recall = recall_score(y, preds)
-    f1 = f1_score(y, preds)
-    print('#normal: ' + str(test_norm.shape[0]) + ' / #bot: ' + str(test_bot.shape[0]))
-    print('prec:' + str(prec))
-    print('rec:' + str(recall))
-    print('f1: ' + str(f1))
-    print(str(conf_matrix))
 
 
 def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, task, config):
@@ -472,11 +300,13 @@ def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, t
 
     hist_norm = hist_data[0:test_norm.shape[0]]
     if hist_norm.shape[0] > 5000:
-        hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000), :]
+        # hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000), :]
+        hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000)]
 
     hist_mal = hist_data[test_norm.shape[0]:, ]
     if hist_mal.shape[0] > 5000:
-        hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
+        # hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
+        hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000)]
 
     table_name = 'reconstruction-error-test-taks-' + task + '_scenario-' + str(scenario)
     wandb.log(

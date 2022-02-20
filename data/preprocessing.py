@@ -38,7 +38,7 @@ def make_conn_dataframe(conn_lst, scenario='all'):
     return df
 
 
-def preprocess_CTU(df):
+def preprocess_CTU(df, **kwargs):
     '''only connection'''
     df = df.reset_index(drop=True)
     service_lst = ["http", "dns", "icmp", "ntp", "ssl", "smtp"]
