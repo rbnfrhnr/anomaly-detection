@@ -21,12 +21,16 @@ import wandb
 from model.rvae import RVAE
 
 if __name__ == '__main__':
-    print(backend._get_available_gpus())
-    sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
-    backend.set_session(sess)
     config_file = sys.argv[1]
     config = utils.read_cfg(config_file)
     config = utils.setup_run(config)
+
+    use_gpu = config['use-gpu']
+
+    print(backend._get_available_gpus())
+    if use_gpu:
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+        backend.set_session(sess)
 
     downstream_tasks = config['downstream']['tasks']
     wandb_group_name = config['experiment-name']

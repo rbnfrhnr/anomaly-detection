@@ -1,13 +1,15 @@
 # used as an identifier to group runs and for wandbb logging group
 experiment-name: template
 
+# yes / no
+use-gpu: no
+
 model:
   type: autoencoder
   sub-type: RNN
 
   # specific to model-type and sub-type
   config:
-    latent-dimension: 5
     encoding-layers:
       - class-name: GRU
         arguments:
@@ -56,7 +58,7 @@ preprocessing:
   # preprocessed datasets are 'cached' as csv files
   cache:
     location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
-    override: false
+    override: True
 
   # list of noise, noise-replace, reverse, reverse-replace
   augmentation: None

@@ -54,6 +54,12 @@ features = ['Dur', 'Proto', 'SrcAddr', 'Sport', 'Dir', 'DstAddr', 'Dport', 'Stat
             'SrcBytes']
 
 
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+
+
 def save(frame, name):
     frame.to_csv(name)
 
@@ -80,7 +86,7 @@ def kl_divergence(p, q):
     return sum(p[i] * (math.log(p[i] / q[i]) if q[i] > 0 and p[i] > 0 else 0) for i in range(len(p)))
 
 
-def pred(vae, X, axis=1):
+def pred(vae, X, axis=(1, 2)):
     mu, log_sig, z = vae.encoder.predict(X)
     rec = vae.decoder.predict(z)
     # err = ((X - rec) ** 2).reshape(X.shape[0], X.shape[1] * X.shape[2])
@@ -190,9 +196,9 @@ def augment(data, type):
     return data
 
 
-def predict(vae, downstream_model, X, axis=1):
+def predict(vae, downstream_model, X, axis=(1, 2)):
     err, mu, log_sig = pred(vae, X, axis=axis)
-    return downstream_model.predict(err)
+    return downstream_model.predict(err), err
 
 
 def best_fit_distribution(data, bins=200, ax=None):
@@ -370,9 +376,8 @@ def setup_run(cfg):
     return cfg
 
 
-def create_autoencoder(cfg, feature_dim=None, **kwargs):
+def create_autoencoder(cfg, feature_dim=None, latent_dim=5, **kwargs):
     sub_type = cfg['sub-type']
-    latent_dim = cfg['config']['latent-dimension']
     enc_layers = cfg['config']['encoding-layers']
     dec_layers = cfg['config']['decoding-layers']
     optimizer = cfg['config']['optimizer']['class-name']
@@ -399,16 +404,16 @@ def create_autoencoder(cfg, feature_dim=None, **kwargs):
 def create_model(cfg, **kwargs):
     model_type = cfg['model']['type']
     if model_type == 'autoencoder':
-        return create_autoencoder(cfg['model'], **kwargs)
+        return create_autoencoder(cfg['model'], latent_dim=cfg['autoencoder']['latent-dim'], **kwargs)
     return None
 
 
 if __name__ == '__main__':
-    # config = read_cfg('./config/template.yaml')
-    # config = setup_run(config)
+    config = read_cfg('./config/template.yaml')
+    config = setup_run(config)
     # model = create_model(config, **{'feature_dim': (None, 23, 5)})
     # print(model.summary())
-    train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
+    # train_sets = [3, 4, 5, 7, 10, 11, 12, 13]
     # test_sets = [1, 2, 6, 8, 9]
     # test = data[~msk]
     # test = load(test_sets, 'test-def-medium', True)

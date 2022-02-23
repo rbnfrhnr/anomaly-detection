@@ -1,6 +1,7 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: no-augmentation
+experiment-name: rvae-real-ts
 
+# yes / no
 use-gpu: no
 
 model:
@@ -9,7 +10,6 @@ model:
 
   # specific to model-type and sub-type
   config:
-    latent-dimension: 5
     encoding-layers:
       - class-name: GRU
         arguments:
@@ -31,7 +31,7 @@ autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 500
+  epochs: 10
   batch-size: 128
 
 data:
@@ -40,7 +40,6 @@ data:
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
     all: [ 1, 2, 6, 8, 9 ]
-    all-incl-training: [ 1,2,3,4,5,6,7,8,9,10,11,12,13 ]
     ctu-1-2-9: [ 1, 2, 9 ]
     ctu-1: [ 1 ]
     ctu-2: [ 2 ]
@@ -55,11 +54,12 @@ preprocessing:
   params:
     period_len: 60
     rm_ntp: false
+    groupby_cols: [SrcAddr, time_chunk]
 
   # preprocessed datasets are 'cached' as csv files
   cache:
-    location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
-    override: false
+    location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/real-ts/
+    override: False
 
   # list of noise, noise-replace, reverse, reverse-replace
   augmentation: None
@@ -76,5 +76,5 @@ logging:
 
 
   wandb:
-    project: ctu-13-augment
+    project: ctu-13-augment-test
     entity: lbl-crd

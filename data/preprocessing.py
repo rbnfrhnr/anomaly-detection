@@ -63,7 +63,7 @@ def preprocess_CTU(df, **kwargs):
     return df_fill_oh
 
 
-def preprocess_stat_CTU(df, **kwargs):
+def preprocess_stat_CTU(df, groupby_cols=["time_chunk", "SrcAddr"], **kwargs):
     '''large dataset
        stat & connection info'''
     df = df.reset_index(drop=True)
@@ -87,7 +87,7 @@ def preprocess_stat_CTU(df, **kwargs):
     # df = port_service_rate(df)
 
     grouped = df.filter(['Dur', 'TotPkts', 'TotBytes', 'Proto', 'service', "time_chunk", "SrcAddr"], axis=1).groupby(
-        ["time_chunk", "SrcAddr"])
+        groupby_cols)
     result = grouped["Dur", "TotPkts", 'TotBytes'].aggregate([np.mean, np.std])
     df_merged = result.reset_index(level=[0, 1])
     df_merged.columns = [' '.join(col).strip() for col in df_merged.columns.values]
@@ -118,7 +118,7 @@ def preprocess_stat_CTU(df, **kwargs):
     return df_fill_oh
 
 
-def preprocess_stat_2_CTU(df, period_len=60, rm_ntp=False):
+def preprocess_stat_2_CTU(df, period_len=60, rm_ntp=False, groupby_cols=["time_chunk", "SrcAddr"]):
     '''medium dataset
        stat(1 min) 
        use port, ip addr'''
@@ -159,7 +159,7 @@ def preprocess_stat_2_CTU(df, period_len=60, rm_ntp=False):
     df_dstaddr = df_filtered.groupby(["time_chunk", "SrcAddr"])["DstAddr"].nunique().reset_index(level=[0, 1])
     df_sport = df_filtered.groupby(["time_chunk", "SrcAddr"])["Sport"].nunique().reset_index(level=[0, 1])
 
-    grouped = df_filtered.groupby(["time_chunk", "SrcAddr"])
+    grouped = df_filtered.groupby(groupby_cols)
     df_ipcnt = pd.DataFrame(grouped["SrcAddr"].agg('count')).rename(columns={'SrcAddr': "sripcnt"}).reset_index()
     result = grouped["Dur", "TotPkts", 'TotBytes'].aggregate([np.mean, np.std])
     result_service = df_filtered.groupby(["time_chunk", "SrcAddr", "service"]).size().unstack(fill_value=0).reset_index(
@@ -176,6 +176,7 @@ def preprocess_stat_2_CTU(df, period_len=60, rm_ntp=False):
     df_merged = df_merged.fillna(0)
     df_merged = df_merged.merge(df_class.drop_duplicates(subset=["SrcAddr", "time_chunk"]), how='left')
     df_final = result_service.merge(df_merged)
+    df_final = df_final.sort_values(groupby_cols)
     df_final = df_final.merge(result_proto)
     df_final = df_final.merge(df_dport)
     df_final = df_final.merge(df_dstaddr)
