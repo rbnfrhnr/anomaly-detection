@@ -67,18 +67,18 @@ class KDEDownstream(keras.Model):
         # bins_mal = min(x_mal.shape[0], 100000)
         # bin_mal = (np.histogram(x_mal, bins_mal, weights=x_mal)[0])
 
-        self.norm_pdf = KDEUnivariate(x)
+        self.norm_pdf = KDEUnivariate(x_norm)
         self.norm_pdf.fit()
         # self.norm_pdf = KernelDensity(kernel='epanechnikov').fit(x_norm.reshape(-1, 1))
         # self.norm_pdf = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(x_norm.reshape(-1, 1))
 
-        self.mal_pdf = KDEUnivariate(x)
+        self.mal_pdf = KDEUnivariate(x_mal)
         self.mal_pdf.fit()
         # self.mal_pdf = KernelDensity(kernel='epanechnikov').fit(x_mal.reshape(-1, 1))
 
         xx = np.linspace(min(x), max(x), 200)
         plt.plot(xx, self.norm_pdf.evaluate(xx))
-        plt.plot(xx, self.mal_pdf.score_samples(xx))
+        plt.plot(xx, self.mal_pdf.evaluate(xx))
         plt.hist(x_norm, bins=200, density=True)
         plt.hist(x_mal, bins=200, density=True)
         plt.show()
@@ -96,19 +96,19 @@ class KDEDownstream(keras.Model):
         # norm_score = [self.norm_pdf.evaluate(batch) for batch in utils.batch(x, 15000)]
         # norm_score = np.array(norm_score)
         # norm_score = norm_score.reshape(np.product(norm_score.shape))
-        # norm_score = self.norm_pdf.evaluate(x)
+        norm_score = self.norm_pdf.evaluate(x)
         t = T(self.norm_pdf)
         t2 = T(self.mal_pdf)
 
         cores_to_use = math.floor(0.9 * multiprocessing.cpu_count())
         chnk_size = min(round(x.shape[0] / cores_to_use), 200000)
-        with Pool(cores_to_use) as p:
-            norm_score = p.map(t.predi, x, chunksize=chnk_size)
-        norm_score = np.array(norm_score)
+        # with Pool(cores_to_use) as p:
+        #     norm_score = p.map(t.predi, x, chunksize=chnk_size)
+        # norm_score = np.array(norm_score)
         print('norm done')
-        with Pool(cores_to_use) as p:
-            mal_score = p.map(t2.predi, x, chunksize=chnk_size)
-        mal_score = np.array(mal_score)
+        # with Pool(cores_to_use) as p:
+        #     mal_score = p.map(t2.predi, x, chunksize=chnk_size)
+        # mal_score = np.array(mal_score)
         print('mal done')
 
         # with Pool(5) as p:
@@ -117,7 +117,7 @@ class KDEDownstream(keras.Model):
         # mal_score = np.array(mal_score)
 
         # mal_score = mal_score.reshape(np.product(mal_score))
-        # mal_score = self.mal_pdf.evaluate(x)
+        mal_score = self.mal_pdf.evaluate(x)
 
         return mal_score > norm_score
 

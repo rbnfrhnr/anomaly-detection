@@ -87,8 +87,8 @@ def kl_divergence(p, q):
 
 
 def pred(vae, X, axis=(1, 2)):
-    mu, log_sig, z = vae.encoder.predict(X)
-    rec = vae.decoder.predict(z)
+    mu, log_sig, z = vae.encoder.predict_on_batch(X)
+    rec = vae.decoder.predict_on_batch(z)
     # err = ((X - rec) ** 2).reshape(X.shape[0], X.shape[1] * X.shape[2])
     err = ((X - rec) ** 2).sum(axis=axis)
     # err = np.diag(err @ err.T)
