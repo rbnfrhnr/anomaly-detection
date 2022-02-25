@@ -12,7 +12,7 @@ from tensorflow import keras
 from keras import backend
 from tensorflow.keras import layers
 from wandb.keras import WandbCallback
-from data import loader
+from data import loader_factory
 from downstream import downstream_factory
 import tensorflow as tf
 
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     batch_size = config['autoencoder']['batch-size']
     epochs = config['autoencoder']['epochs']
 
-    train, test_scenarios = loader.load(config)
+    train, test_scenarios = loader_factory.get_loader('ctu-13')(config)
     test = test_scenarios['all']
 
     train_norm, train_bot = utils.split_mal_norm(train)
