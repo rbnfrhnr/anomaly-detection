@@ -138,6 +138,7 @@ wandb==0.12.9
 wcwidth==0.2.5
 webencodings==0.5.1
 Werkzeug==2.0.2
+wfdb==3.4.1
 widgetsnbextension==3.5.2
 wrapt==1.13.3
 yaspin==2.1.0
