@@ -58,4 +58,17 @@ def load(config):
         group: test_group_data[group].drop(
             columns=[feat for feat in test_group_data[group].columns if feat not in common_attributes])
         for group in test_group_data.keys()}
-    return train, test_group_data
+
+    for test_group in test_groups:
+        test_norm, test_mal = utils.split_mal_norm(test_group_data[test_group])
+        test_norm = test_norm.drop(columns=['class']).values
+        test_mal = test_mal.drop(columns=['class']).values
+        test_norm = utils.reshape_for_rnn(test_norm, 5)
+        test_mal = utils.reshape_for_rnn(test_mal, 5)
+        test_group_data[test_group] = (test_norm, test_mal)
+
+    train_norm, train_mal = utils.split_mal_norm(train)
+    train_norm = train_norm.drop(columns=['class']).values
+    train_mal = train_mal.drop(columns=['class']).values
+
+    return utils.reshape_for_rnn(train_norm), utils.reshape_for_rnn(train_mal), test_group_data

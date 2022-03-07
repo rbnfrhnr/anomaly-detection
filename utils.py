@@ -10,7 +10,7 @@ import pandas as pd
 import scipy.stats as st
 import tensorflow as tf
 import yaml
-from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score
+from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score, accuracy_score
 from tensorflow import keras
 from tensorflow.keras import layers
 
@@ -87,8 +87,10 @@ def kl_divergence(p, q):
 
 
 def pred(vae, X, axis=(1, 2)):
-    mu, log_sig, z = vae.encoder.predict_on_batch(X)
-    rec = vae.decoder.predict_on_batch(z)
+    mu, log_sig, z = vae.encoder.predict(X)
+    # mu, log_sig, z = vae.encoder.predict_on_batch(X)
+    rec = vae.decoder.predict(z)
+    # rec = vae.decoder.predict_on_batch(z)
     # err = ((X - rec) ** 2).reshape(X.shape[0], X.shape[1] * X.shape[2])
     err = ((X - rec) ** 2).sum(axis=axis)
     # err = np.diag(err @ err.T)
@@ -107,11 +109,11 @@ def add_noise(data):
 def time_shift(data):
     shp = data.shape
     data = data.reshape(shp[0] * shp[1], shp[-1])
-    offset = math.ceil(5 / 2)
+    offset = math.ceil(45 / 2)
     shifted = data[offset:, ]
-    count = math.floor(shifted.shape[0] / 5)
-    shifted = shifted[0:5 * count]
-    return shifted.reshape(count, 5, shp[-1])
+    count = math.floor(shifted.shape[0] / 45)
+    shifted = shifted[0:45 * count]
+    return shifted.reshape(count, 45, shp[-1])
 
 
 def generate_from_rvae(data):
@@ -152,6 +154,47 @@ def augment_time_shift(data):
 
 def augment_rvae_generate(data):
     return np.concatenate([data, generate_from_rvae(data)])
+
+def augment2(data, type):
+    if type == 'reverse':
+        return reverse(data)
+    if type == 'noise':
+        return add_noise(data)
+    if type == 'noise-replace':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+        return augment_noise(data)
+    if type == 'reverse-replace':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+        return augment_reverse(data)
+    if type == 'reverse-fifth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
+        return augment_reverse(data)
+    if type == 'reverse-tenth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
+        return augment_reverse(data)
+    if type == 'time-shift':
+        return augment_time_shift(data)
+    if type == 'time-shift-half':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+        return augment_time_shift(data)
+    if type == 'time-shift-fifth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
+        return augment_time_shift(data)
+    if type == 'time-shift-tenth':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
+        return augment_time_shift(data)
+    if type == 'rvae-generate':
+        return augment_rvae_generate(data)
+    if type == 'rvae-generate-half':
+        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+        return augment_rvae_generate(data)
+    if type == 'half-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
+    if type == 'fifth-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
+    if type == 'tenth-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
+    return data
 
 
 def augment(data, type):
@@ -279,11 +322,7 @@ def get_wandb_hist_data(hist_norm, hist_mal):
 
 def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, task, config):
     print('test eval for scenario ' + str(scenario))
-    test_norm, test_bot = split_mal_norm(test_data)
-    test_norm = remove_ylabel(test_norm)
-    test_norm = reshape_for_rnn(test_norm.values)
-    test_bot = remove_ylabel(test_bot)
-    test_bot = reshape_for_rnn(test_bot.values)
+    test_norm, test_bot = test_data
 
     y = np.concatenate((np.zeros(test_norm.shape[0]), np.ones(test_bot.shape[0])), axis=None)
     preds, recon_err = predict(vae, downstream_model, np.concatenate([test_norm, test_bot]), axis=(1, 2))
@@ -292,15 +331,18 @@ def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, t
     prec = precision_score(y, preds)
     recall = recall_score(y, preds)
     f1 = f1_score(y, preds)
+    acc = accuracy_score(y, preds)
     print('#normal: ' + str(test_norm.shape[0]) + ' / #bot: ' + str(test_bot.shape[0]))
     print('prec:' + str(prec))
     print('rec:' + str(recall))
     print('f1: ' + str(f1))
+    print('acc: ' + str(acc))
     print(str(conf_matrix))
 
     wandb.run.summary["Precision_task_" + task + "_scenario_" + str(scenario)] = prec
     wandb.run.summary["Recall_task_" + task + "_scenario_" + str(scenario)] = recall
     wandb.run.summary["F1_task_" + task + "_scenario_" + str(scenario)] = f1
+    wandb.run.summary["Accuracy_task_" + task + "_scenario_" + str(scenario)] = acc
     wandb.sklearn.plot_confusion_matrix(y, preds, ['normal', 'botnet'])
     hist_data = np.stack([recon_err, y], axis=1)
 

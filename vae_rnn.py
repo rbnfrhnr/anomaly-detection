@@ -24,7 +24,6 @@ if __name__ == '__main__':
     config_file = sys.argv[1]
     config = utils.read_cfg(config_file)
     config = utils.setup_run(config)
-
     use_gpu = config['use-gpu']
 
     print(backend._get_available_gpus())
@@ -32,9 +31,9 @@ if __name__ == '__main__':
         sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
         backend.set_session(sess)
 
+    data_set = config['data']['data-set']
     downstream_tasks = config['downstream']['tasks']
     wandb_group_name = config['experiment-name']
-    augment_type = config['preprocessing']['augmentation']
     wandb_project = config['logging']['wandb']['project']
     wandb_entity = config['logging']['wandb']['entity']
     wandb.init(project=wandb_project, entity=wandb_entity,
@@ -45,23 +44,11 @@ if __name__ == '__main__':
     batch_size = config['autoencoder']['batch-size']
     epochs = config['autoencoder']['epochs']
 
-    train, test_scenarios = loader_factory.get_loader('ctu-13')(config)
+    train_norm, train_bot, test_scenarios = loader_factory.get_loader(data_set)(config)
     test = test_scenarios['all']
 
-    train_norm, train_bot = utils.split_mal_norm(train)
-    count_x = math.floor(train_norm.shape[0] / 5)
-    train_norm = utils.remove_ylabel(train_norm)
-    train_norm = utils.reshape_for_rnn(train_norm.values)
-    train_norm = utils.augment(train_norm, augment_type)
 
-    train_bot = utils.remove_ylabel(train_bot)
-    train_bot = utils.reshape_for_rnn(train_bot.values)
-
-    test_norm, test_bot = utils.split_mal_norm(test)
-    test_norm = utils.remove_ylabel(test_norm)
-    test_norm = utils.reshape_for_rnn(test_norm.values)
-    test_bot = utils.remove_ylabel(test_bot)
-    test_bot = utils.reshape_for_rnn(test_bot.values)
+    test_norm, test_bot = test
 
     feature_dim = train_norm.shape
     model = utils.create_model(config, feature_dim=feature_dim)

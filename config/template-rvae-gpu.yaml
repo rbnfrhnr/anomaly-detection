@@ -32,10 +32,11 @@ autoencoder:
   latent-dim: 10
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 500
+  epochs: 10
   batch-size: 4096
 
 data:
+  data-set: ctu-13
   location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
   train-ctu-sets: [ 3, 4, 5, 7, 10, 11, 12, 13 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups

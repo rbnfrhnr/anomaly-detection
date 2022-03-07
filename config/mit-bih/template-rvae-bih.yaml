@@ -1,8 +1,8 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: template
+experiment-name: template-mit-bih
 
 # yes / no
-use-gpu: no
+use-gpu: yes
 
 model:
   type: autoencoder
@@ -31,38 +31,28 @@ autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 500
-  batch-size: 128
+  epochs: 100
+  batch-size: 1024
 
 data:
-  data-set: ctu-13
-  location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
-  train-ctu-sets: [ 3, 4, 5, 7, 10, 11, 12, 13 ]
+  data-set: mit-bih
+  location: /home/robin/Documents/lbnl/crd/RealDatasets/ANNOTATIONS/
+  train-sets: [ 803, 805, 806, 820 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
-    all: [ 1, 2, 6, 8, 9 ]
-    ctu-1-2-9: [ 1, 2, 9 ]
-    ctu-1: [ 1 ]
-    ctu-2: [ 2 ]
-    ctu-6: [ 6 ]
-    ctu-8: [ 8 ]
-    ctu-9: [ 9 ]
+    all: [ 803, 805, 806, 820 ]
+    #    train: [ 803, 806 ]
+    #    803: [ 803 ]
+    805: [ 805 ]
+    #    806: [ 806 ]
+#    820: [ 820 ]
 
 preprocessing:
   # small, medium, large (see preprocessing.py)
-  type: medium
-  # const params for specific preprocessing method. will be passed as **kwargs
-  params:
-    period_len: 60
-    rm_ntp: false
-
-  # preprocessed datasets are 'cached' as csv files
-  cache:
-    location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
-    override: False
-
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: None
+  time-steps: 60
+  augmentation: []
+#  augmentation: [  reverse ]
 
 downstream:
   #  tasks: [ best-fit-pdf]
