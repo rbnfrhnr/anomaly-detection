@@ -79,6 +79,22 @@ def load_mit_bih(data_location, nr=802, **kwargs):
     mal = np.array(mal)
     return np.array([norm, mal])
 
+def load_mit_bih2(data_location, nr=802, **kwargs):
+    anot_file = data_location + str(nr)
+    data_file = data_location + str(nr)
+    anot = wfdb.rdann(anot_file, 'atr')
+    data = wfdb.rdsamp(data_file)
+    mal_bound = round(anot.fs / 10)
+    sigs = np.array([data[0][:, 0], data[0][:, 1]])
+    mal_idx = np.argwhere(np.array(anot.symbol) != 'N')
+    mal_ranges = np.array([np.array([anot.sample[mal][0]-mal_bound, (
+            anot.sample[mal] + np.round((anot.sample[mal_idx[idx] + 1][0] - anot.sample[mal]) / 2)).astype(int)[0]])
+                           for idx, mal in enumerate(mal_idx)])
+    mal_ranges_values = np.array([np.array(list(range(interval[0], interval[1]))) for interval in mal_ranges])
+    mal_ex = np.array([sigs[0][r] for r in mal_ranges_values])
+    xx = range(0, mal_ex[0].shape[0])
+    plt.plot(xx, mal_ex[0])
+    plt.show()
 
 if __name__ == '__main__':
     # load_mit_bih('C:\workarea\mit-bih\\')
