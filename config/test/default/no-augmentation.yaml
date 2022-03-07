@@ -45,7 +45,7 @@ data:
 
 preprocessing:
   # small, medium, large (see preprocessing.py)
-  type: largs
+  type: large
   # const params for specific preprocessing method. will be passed as **kwargs
   params:
     period_len: 60
