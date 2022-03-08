@@ -15,7 +15,7 @@ from wandb.keras import WandbCallback
 from data import loader_factory
 from downstream import downstream_factory
 import tensorflow as tf
-
+from evaluation.evaluation_factory import get_evaluator
 import utils
 import wandb
 from model.rvae import RVAE
@@ -45,8 +45,7 @@ if __name__ == '__main__':
     epochs = config['autoencoder']['epochs']
 
     train_norm, train_bot, test_scenarios = loader_factory.get_loader(data_set)(config)
-    test = test_scenarios['all']
-
+    test = test_scenarios['real-test']
 
     test_norm, test_bot = test
 
@@ -76,7 +75,7 @@ if __name__ == '__main__':
         Path(task_dir).mkdir(parents=True, exist_ok=True)
         downstream_model = downstream_factory.get_downstream_task(task)
         downstream_model.fit(x, y)
-
+        evaluator = get_evaluator(data_set)
         for scenario in test_scenarios:
-            utils.test_eval(test_scenarios[scenario], model, downstream_model, scenario, wandb_group_name, run_id, task,
-                            config)
+            evaluator(test_scenarios[scenario], model, downstream_model, scenario, wandb_group_name, run_id, task,
+                      **config)

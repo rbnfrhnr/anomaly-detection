@@ -109,11 +109,11 @@ def add_noise(data):
 def time_shift(data):
     shp = data.shape
     data = data.reshape(shp[0] * shp[1], shp[-1])
-    offset = math.ceil(45 / 2)
+    offset = math.ceil(shp[1] / 2)
     shifted = data[offset:, ]
-    count = math.floor(shifted.shape[0] / 45)
-    shifted = shifted[0:45 * count]
-    return shifted.reshape(count, 45, shp[-1])
+    count = math.floor(shifted.shape[0] / shp[1])
+    shifted = shifted[0:shp[1] * count]
+    return shifted.reshape(count, shp[1], shp[-1])
 
 
 def generate_from_rvae(data):
@@ -154,6 +154,7 @@ def augment_time_shift(data):
 
 def augment_rvae_generate(data):
     return np.concatenate([data, generate_from_rvae(data)])
+
 
 def augment2(data, type):
     if type == 'reverse':
@@ -244,6 +245,12 @@ def predict(vae, downstream_model, X, axis=(1, 2)):
     return downstream_model.predict(err), err
 
 
+def predict2(vae, downstream_model, X, axis=(1, 2)):
+    err, mu, log_sig = pred(vae, X, axis=axis)
+    score_norm, score_mal = downstream_model.predict2(err)
+    return score_norm, score_mal, err
+
+
 def best_fit_distribution(data, bins=200, ax=None):
     """Model data by finding best fit distribution to data"""
     # Get histogram of original data
@@ -320,52 +327,6 @@ def get_wandb_hist_data(hist_norm, hist_mal):
     return hist_norm, hist_mal
 
 
-def test_eval(test_data, vae, downstream_model, scenario, file_prefix, run_id, task, config):
-    print('test eval for scenario ' + str(scenario))
-    test_norm, test_bot = test_data
-
-    y = np.concatenate((np.zeros(test_norm.shape[0]), np.ones(test_bot.shape[0])), axis=None)
-    preds, recon_err = predict(vae, downstream_model, np.concatenate([test_norm, test_bot]), axis=(1, 2))
-    preds = preds.astype(int).reshape(y.shape)
-    conf_matrix = confusion_matrix(y, preds)
-    prec = precision_score(y, preds)
-    recall = recall_score(y, preds)
-    f1 = f1_score(y, preds)
-    acc = accuracy_score(y, preds)
-    print('#normal: ' + str(test_norm.shape[0]) + ' / #bot: ' + str(test_bot.shape[0]))
-    print('prec:' + str(prec))
-    print('rec:' + str(recall))
-    print('f1: ' + str(f1))
-    print('acc: ' + str(acc))
-    print(str(conf_matrix))
-
-    wandb.run.summary["Precision_task_" + task + "_scenario_" + str(scenario)] = prec
-    wandb.run.summary["Recall_task_" + task + "_scenario_" + str(scenario)] = recall
-    wandb.run.summary["F1_task_" + task + "_scenario_" + str(scenario)] = f1
-    wandb.run.summary["Accuracy_task_" + task + "_scenario_" + str(scenario)] = acc
-    wandb.sklearn.plot_confusion_matrix(y, preds, ['normal', 'botnet'])
-    hist_data = np.stack([recon_err, y], axis=1)
-
-    hist_norm = hist_data[0:test_norm.shape[0]]
-    if hist_norm.shape[0] > 5000:
-        # hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000), :]
-        hist_norm = hist_norm[np.random.randint(hist_norm.shape[0], size=5000)]
-
-    hist_mal = hist_data[test_norm.shape[0]:, ]
-    if hist_mal.shape[0] > 5000:
-        # hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000), :]
-        hist_mal = hist_mal[np.random.randint(hist_mal.shape[0], size=5000)]
-
-    table_name = 'reconstruction-error-test-taks-' + task + '_scenario-' + str(scenario)
-    wandb.log(
-        {table_name: wandb.Table(
-            data=np.concatenate([hist_norm, hist_mal]).tolist(),
-            columns=['reconstruction-error', 'label'])})
-    log = pd.DataFrame(columns=['recon-err', 'prediction', 'label'], data=np.stack([recon_err, preds, y], axis=1))
-    log_name = file_prefix + '-reconstruction-error-' + str(scenario)
-    log.to_csv(config['run-dir'] + '/downstream-task/' + task + '/' + log_name + '.csv')
-
-
 def set_seeds(cfg):
     # Seed value
     default_seed = int(round(999999 * random.random()) + 1)
@@ -410,8 +371,9 @@ def save_cfg(cfg):
 
 def setup_run(cfg):
     d = datetime.today()
+    log_location = cfg['logging']['log-location']
     cfg['run-id'] = cfg['experiment-name'] + '-' + d.strftime("%Y-%m-%d-%H-%M-%S")
-    cfg['run-dir'] = "./runs/" + cfg['experiment-name'] + '/' + cfg['run-id']
+    cfg['run-dir'] = log_location + "/" + cfg['experiment-name'] + '/' + cfg['run-id']
     Path(cfg['run-dir']).mkdir(parents=True, exist_ok=True)
     set_seeds(cfg)
     save_cfg(cfg)

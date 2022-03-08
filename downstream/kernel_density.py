@@ -64,7 +64,7 @@ class KDEDownstream(keras.Model):
         self.mal_pdf = None
 
     def fit(self, x, y, **kwargs):
-        max_len = 10000
+        max_len = 1000000
         x_norm = x[np.where(y == 0)]
         x_norm = x_norm if x_norm.shape[0] < max_len else np.random.choice(x_norm, max_len)
 
@@ -93,6 +93,7 @@ class KDEDownstream(keras.Model):
         # plt.plot(xx, np.exp(self.norm_pdf.score_samples(xx)))
         plt.plot(xx, self.norm_pdf.evaluate(xx))
         # plt.plot(xx, np.exp(self.mal_pdf.score_samples(xx)))
+        plt.plot(xx, self.mal_pdf.evaluate(xx))
         plt.plot(xx, self.mal_pdf.evaluate(xx))
         plt.hist(x_norm, bins=100, density=True)
         plt.hist(x_mal, bins=100, density=True)
@@ -138,6 +139,12 @@ class KDEDownstream(keras.Model):
         print('mal done')
 
         return mal_score > norm_score
+
+    def predict2(self, x, **kwargs):
+        norm_score = np.concatenate([self.norm_pdf.evaluate(xi) for xi in utils.batch(x, 1000)])
+        mal_score = np.concatenate([self.mal_pdf.evaluate(xi) for xi in utils.batch(x, 100000)])
+
+        return norm_score, mal_score
 
 
 if __name__ == '__main__':
