@@ -91,7 +91,7 @@ class KDEDownstream(keras.Model):
         # xx = np.linspace(min(x), max(x), 200).reshape(-1, 1)
         xx = np.linspace(x_min, x_max, 200)
         # plt.plot(xx, np.exp(self.norm_pdf.score_samples(xx)))
-        plt.plot(xx, self.norm_pdf.evaluate(xx))
+        # plt.plot(xx, self.norm_pdf.evaluate(xx))
         # plt.plot(xx, np.exp(self.mal_pdf.score_samples(xx)))
         plt.plot(xx, self.mal_pdf.evaluate(xx))
         plt.plot(xx, self.mal_pdf.evaluate(xx))
