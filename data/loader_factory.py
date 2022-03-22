@@ -1,9 +1,10 @@
 from data.loader import load
-from data.mit_bih import fetch_sliced
+from data.mit_bih import load_windowed_no_overlap, load_sliding_window
 
 
 def get_loader(data_set):
     if data_set == 'ctu-13':
         return load
     if data_set == 'mit-bih':
-        return fetch_sliced
+        return load_windowed_no_overlap
+        # return load_sliding_window

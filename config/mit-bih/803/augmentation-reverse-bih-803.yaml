@@ -31,8 +31,8 @@ autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 500
-  batch-size: 1024
+  epochs: 100
+  batch-size: 2048
 
 data:
   data-set: mit-bih
@@ -40,9 +40,7 @@ data:
   train-sets: [ 803 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
-    all: [ 803, 805, 806, 820 ]
-    #    train: [ 803, 806 ]
-    803: [ 803 ]
+  #    train: [ 803, 806 ]
 #    805: [ 805 ]
 #    806: [ 806 ]
 #    820: [ 820 ]
@@ -50,15 +48,15 @@ data:
 preprocessing:
   # small, medium, large (see preprocessing.py)
   # list of noise, noise-replace, reverse, reverse-replace
-  time-steps: 60
+  time-steps: 75
   augmentation: [ reverse ]
 
 downstream:
   #  tasks: [ best-fit-pdf]
-  tasks: [ kde, best-fit-pdf ]
+  tasks: [ kde ]
 
 logging:
-  log-location: ./runs
+  log-location: ./runs/mit-bih/803
   #copies the preprocessed data to the run dir (the same data as the cached one)
   copy-data: false
   use-wandb: true

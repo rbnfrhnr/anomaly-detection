@@ -1,4 +1,5 @@
 import datetime
+import logging
 import math
 import os
 import random
@@ -10,11 +11,12 @@ import pandas as pd
 import scipy.stats as st
 import tensorflow as tf
 import yaml
-from sklearn.metrics import f1_score, confusion_matrix, precision_score, recall_score, accuracy_score
+from keras import backend
 from tensorflow import keras
 from tensorflow.keras import layers
 
-import wandb
+from logger.data_logger import DataHandler
+from logger.wandb_logger import WandbHandler
 from model.rvae import RVAE
 
 files = [
@@ -88,12 +90,8 @@ def kl_divergence(p, q):
 
 def pred(vae, X, axis=(1, 2)):
     mu, log_sig, z = vae.encoder.predict(X)
-    # mu, log_sig, z = vae.encoder.predict_on_batch(X)
     rec = vae.decoder.predict(z)
-    # rec = vae.decoder.predict_on_batch(z)
-    # err = ((X - rec) ** 2).reshape(X.shape[0], X.shape[1] * X.shape[2])
     err = ((X - rec) ** 2).sum(axis=axis)
-    # err = np.diag(err @ err.T)
     return err, mu, log_sig
 
 
@@ -102,7 +100,7 @@ def reverse(data):
 
 
 def add_noise(data):
-    noise = np.random.normal(0, .1, data.shape)
+    noise = np.random.normal(0, .025, data.shape)
     return data + noise
 
 
@@ -355,7 +353,6 @@ def set_seeds(cfg):
 
 
 def read_cfg(cfg_file):
-    cfg = None
     with open(cfg_file) as file:
         cfg = yaml.load(file, Loader=yaml.FullLoader)
     if cfg is None:
@@ -372,12 +369,32 @@ def save_cfg(cfg):
 def setup_run(cfg):
     d = datetime.today()
     log_location = cfg['logging']['log-location']
+    logger_name = cfg['logging']['logger-name']
+    use_wandb = cfg['logging']['use-wandb']
+    use_gpu = cfg['use-gpu']
     cfg['run-id'] = cfg['experiment-name'] + '-' + d.strftime("%Y-%m-%d-%H-%M-%S")
     cfg['run-dir'] = log_location + "/" + cfg['experiment-name'] + '/' + cfg['run-id']
     Path(cfg['run-dir']).mkdir(parents=True, exist_ok=True)
     set_seeds(cfg)
     save_cfg(cfg)
+
+    lgr = logging.getLogger(logger_name)
+    lgr.setLevel(logging.DEBUG)
+    lgr.addHandler(DataHandler(cfg['run-dir']))
+    # lgr.addHandler(logging.StreamHandler())
+    if use_wandb:
+        lgr.addHandler(WandbHandler(**cfg))
+
+    print(backend._get_available_gpus())
+    if use_gpu:
+        sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
+        backend.set_session(sess)
     return cfg
+
+
+def get_logger(**cfg):
+    logger_name = cfg['logging']['logger-name']
+    return logging.getLogger(logger_name)
 
 
 def create_autoencoder(cfg, feature_dim=None, latent_dim=5, **kwargs):

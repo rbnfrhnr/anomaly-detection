@@ -2,7 +2,7 @@
 experiment-name: template-mit-bih
 
 # yes / no
-use-gpu: yes
+use-gpu: no
 
 model:
   type: autoencoder
@@ -31,34 +31,36 @@ autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 50
-  batch-size: 4096
+  epochs: 10
+  batch-size: 2048
 
 data:
   data-set: mit-bih
   location: /home/robin/Documents/lbnl/crd/RealDatasets/ANNOTATIONS/
-  train-sets: [ 803, 805, 806, 820 ]
+  train-sets: [ 803 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
-    all: [ 803, 805, 806, 820 ]
+    #    all: [ 803, 805, 806, 820 ]
     #    train: [ 803, 806 ]
     #    803: [ 803 ]
-    805: [ 805 ]
+#    805: [ 805 ]
     #    806: [ 806 ]
 #    820: [ 820 ]
 
 preprocessing:
   # small, medium, large (see preprocessing.py)
   # list of noise, noise-replace, reverse, reverse-replace
-  time-steps: 60
-  augmentation: []
-#  augmentation: [  reverse ]
+  time-steps: 75
+#  augmentation: [ noise, noise, noise, noise, time-shift, reverse ]
+  augmentation: [  ]
 
 downstream:
   #  tasks: [ best-fit-pdf]
   tasks: [ kde, best-fit-pdf ]
+#  tasks: [ kde-sklearn, best-fit-pdf ]
 
 logging:
+  logger-name: anomaly-detection
   log-location: ./runs
   #copies the preprocessed data to the run dir (the same data as the cached one)
   copy-data: false
