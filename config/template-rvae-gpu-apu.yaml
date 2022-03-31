@@ -65,7 +65,15 @@ preprocessing:
 
 downstream:
   #  tasks: [ best-fit-pdf]
-  tasks: [ kde, best-fit-pdf ]
+  tasks:
+    kde-spark:
+      host: https://adb-5601663985573002.2.azuredatabricks.net/?o=5601663985573002#
+      token: [token]
+      cluster: 0316-083813-1jeu518e
+      ignore-version-mismatch: 1
+      #      org-id: llaa
+      port: 15001
+    best-fit-pdf:
 
 logging:
   log-location: ./runs
