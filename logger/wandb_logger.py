@@ -1,5 +1,5 @@
 from logging import StreamHandler
-import pandas as pd
+
 import wandb
 
 
@@ -22,6 +22,8 @@ class WandbHandler(StreamHandler):
             # needs to be pandas dataframe
             data = info['data']
             table_name = context + '-' + entity + '-' + item
+            if data.shape[0] > 10000:
+                data = data.sample(n=10000, replace=False)
             wandb.log(
                 {table_name: wandb.Table(
                     data=data.values.tolist(),
