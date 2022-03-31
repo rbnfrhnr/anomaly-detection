@@ -6,5 +6,5 @@ def get_loader(data_set):
     if data_set == 'ctu-13':
         return load
     if data_set == 'mit-bih':
-        return load_windowed_no_overlap
-        # return load_sliding_window
+        # return load_windowed_no_overlap
+        return load_sliding_window

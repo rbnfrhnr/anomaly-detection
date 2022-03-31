@@ -43,7 +43,7 @@ if __name__ == '__main__':
     logger.info('', extra={'data': {'context': 'train', 'entity': 'vae_rnn', 'item': item_name, 'data': data}})
 
     for task in downstream_tasks:
-        downstream_model = downstream_factory.get_downstream_task(task)
+        downstream_model = downstream_factory.get_downstream_task(task, **config)
         downstream_model.fit(x, y)
         evaluator = get_evaluator(data_set)
         for scenario in test_scenarios:

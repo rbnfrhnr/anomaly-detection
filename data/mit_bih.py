@@ -36,7 +36,12 @@ def load_windowed_no_overlap(cfg):
     sigs = sigs[:math.floor(sigs.shape[0] / window_size) * window_size]
     sigs = sigs.reshape(-1, window_size)
     mal_idxs = np.array(anot.sample)[(np.array(anot.symbol) != 'N').nonzero()[0]]
+
+
     indexer = np.arange(sigs.shape[0] * window_size).reshape(-1, window_size)
+    # indexer = np.arange(window_size)[None, :] + 1 * np.arange(sigs.shape[0] - window_size - 1)[:, None]
+
+
     mal = sigs[np.argwhere(np.isin(indexer, mal_idxs))[:, 0]]
     norm = sigs[np.delete(np.arange(sigs.shape[0]), np.argwhere(np.isin(indexer, mal_idxs))[:, 0])]
 
