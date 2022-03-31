@@ -1,0 +1,88 @@
+# used as an identifier to group runs and for wandbb logging group
+experiment-name: augmentation-rvae-generate
+
+# yes/no
+use-gpu: yes
+
+model:
+  type: autoencoder
+  sub-type: RNN
+
+  # specific to model-type and sub-type
+  config:
+    encoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 30
+      - class-name: LeakyReLU
+        arguments:
+          alpha: 0.1
+    decoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 30
+          return_sequences: True
+    optimizer:
+      class-name: Adam
+#      args:
+
+
+autoencoder:
+  latent-dim: 10
+  # weight for Kullback-Leibler divergence in loss function
+  kl-weight: 0.5
+  epochs: 500
+  batch-size: 4096
+
+data:
+  data-set: 'ctu-13'
+  location: /home/ubuntu/CTU-13-Dataset/
+  train-ctu-sets: [ 3, 4, 5, 7, 10, 11, 12, 13 ]
+  # define groups of ctu sets for testing. The model will be tested on all of these groups
+  test-groups:
+    all: [ 1, 2, 6, 8, 9 ]
+    ctu-1-2-9: [ 1, 2, 9 ]
+#    ctu-1: [ 1 ]
+#    ctu-2: [ 2 ]
+#    ctu-6: [ 6 ]
+#    ctu-8: [ 8 ]
+#    ctu-9: [ 9 ]
+
+preprocessing:
+  # small, medium, large (see preprocessing.py)
+  type: large
+  # const params for specific preprocessing method. will be passed as **kwargs
+  params:
+    period_len: 60
+    rm_ntp: false
+
+  # preprocessed datasets are 'cached' as csv files
+  cache:
+    location: /home/ubuntu/CTU-13-Dataset/
+    override: false
+
+  # list of noise, noise-replace, reverse, reverse-replace
+  augmentation: [ rvae-generate ]
+
+downstream:
+  #  tasks: [ best-fit-pdf]
+  tasks:
+    kde-spark:
+      host: https://adb-5601663985573002.2.azuredatabricks.net/?o=5601663985573002#
+      token: [ token ]
+      cluster: 0316-083813-1jeu518e
+      ignore-version-mismatch: 1
+      port: 15001
+    best-fit-pdf:
+
+logging:
+  logger-name: anomaly-detection
+  log-location: ./runs
+  #copies the preprocessed data to the run dir (the same data as the cached one)
+  copy-data: false
+  use-wandb: true
+
+
+  wandb:
+    project: ctu-13-large-spark
+    entity: lbl-crd
