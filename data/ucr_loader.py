@@ -31,7 +31,7 @@ def load(cfg):
     anomaly_range = np.arange(anomaly_from, anomaly_to)
 
     if t_steps == 'dynamic':
-        window_size = math.ceil((anomaly_to - anomaly_from) * 0.5)
+        window_size = math.ceil((anomaly_to - anomaly_from) * 0.75)
     else:
         window_size = t_steps
     logger.info('window size: ' + str(window_size))
