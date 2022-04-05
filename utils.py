@@ -17,6 +17,7 @@ from tensorflow.keras import layers
 
 from logger.data_logger import DataHandler
 from logger.wandb_logger import WandbHandler
+from logger.stream_handler import CustomStreamHandler
 from model.rvae import RVAE
 
 files = [
@@ -89,10 +90,12 @@ def kl_divergence(p, q):
 
 
 def pred(vae, X, axis=(1, 2)):
-    mu, log_sig, z = vae.encoder.predict(X)
-    rec = vae.decoder.predict(z)
-    err = ((X - rec) ** 2).sum(axis=axis)
-    return err, mu, log_sig
+    if X.shape[0] > 0:
+        mu, log_sig, z = vae.encoder.predict(X)
+        rec = vae.decoder.predict(z)
+        err = ((X - rec) ** 2).sum(axis=axis)
+        return err, mu, log_sig
+    return np.array([]), np.array([]), np.array([])
 
 
 def reverse(data):
@@ -381,7 +384,7 @@ def setup_run(cfg):
     lgr = logging.getLogger(logger_name)
     lgr.setLevel(logging.DEBUG)
     lgr.addHandler(DataHandler(cfg['run-dir']))
-    # lgr.addHandler(logging.StreamHandler())
+    lgr.addHandler(CustomStreamHandler(cfg['run-dir']))
     if use_wandb:
         lgr.addHandler(WandbHandler(**cfg))
 

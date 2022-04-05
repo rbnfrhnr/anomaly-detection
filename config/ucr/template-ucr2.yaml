@@ -1,0 +1,84 @@
+# used as an identifier to group runs and for wandbb logging group
+experiment-name: template-ucr
+
+# yes / no
+use-gpu: no
+
+model:
+  type: autoencoder
+  sub-type: RNN
+
+  # specific to model-type and sub-type
+  config:
+    encoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+      - class-name: LeakyReLU
+        arguments:
+          alpha: 0.1
+    decoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+          return_sequences: True
+    optimizer:
+      class-name: Adam
+#      args:
+
+
+autoencoder:
+  latent-dim: 5
+  # weight for Kullback-Leibler divergence in loss function
+  kl-weight: 0.5
+  epochs: 100
+  batch-size: 1024
+
+data:
+  data-set: ucr
+  location: /home/robin/Documents/lbnl/crd/datasets/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  train-sets: [ '006' ]
+  # define groups of ctu sets for testing. The model will be tested on all of these groups
+  test-groups:
+  #    all: [ 803, 805, 806, 820 ]
+  #    train: [ 803, 806 ]
+  #    803: [ 803 ]
+  #    805: [ 805 ]
+  #    806: [ 806 ]
+#    820: [ 820 ]
+
+preprocessing:
+  # either integer of fixed length or 'dynamic'
+  # if set to 'dynamic', the time-steps attribute will be replaced after calculation of the window
+  time-steps: dynamic
+  # small, medium, large (see preprocessing.py)
+  # list of noise, noise-replace, reverse, reverse-replace
+#  augmentation: [ noise, time-shift, reverse ]
+#  augmentation: [ ]
+
+downstream:
+  #  tasks: [ best-fit-pdf]
+  tasks:
+    kde:
+    #    kde-spark:
+    #      host: https://adb-5601663985573002.2.azuredatabricks.net/?o=5601663985573002#
+    #      token: dapi500f50cfa7492a35ecf938aca06c314b-2
+    #      cluster: 0316-083813-1jeu518e
+    #      ignore-version-mismatch: 1
+    #      org-id: llaa
+    #      port: 15001
+    best-fit-pdf:
+#  [ kde, best-fit-pdf ]
+#  tasks: [ kde-sklearn, best-fit-pdf ]
+
+logging:
+  logger-name: anomaly-detection
+  log-location: ./runs
+  #copies the preprocessed data to the run dir (the same data as the cached one)
+  copy-data: false
+  use-wandb: true
+
+
+  wandb:
+    project: test-project
+    entity: lbl-crd
