@@ -57,7 +57,7 @@ class KDESparkDownstream(keras.Model):
     def predict2(self, x, **kwargs):
         # x1 = self.sc.parallelize(x)
         # x2 = self.sc.parallelize(x.copy)
-        size = math.floor(x / 10)
+        size = math.floor(x.shape[0] / 10)
         batch_nr = 0
         mals = []
         norms = []
