@@ -71,8 +71,8 @@ class KDESparkDownstream(keras.Model):
             mal_rec.to_csv(self.run_dir + '/spark-kde-mal-batch-' + str(batch_nr) + '.csv')
             norm_rec.to_csv(self.run_dir + '/spark-kde-norm-batch-' + str(batch_nr) + '.csv')
             batch_nr += 1
-        mals = np.concatenate(mals)
-        norms = np.concatenate(norms)
+        mals = np.concatenate(mals, axis=0)
+        norms = np.concatenate(norms, axis=0)
         return norms, mals
 
 
