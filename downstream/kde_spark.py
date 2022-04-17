@@ -66,8 +66,10 @@ class KDESparkDownstream(keras.Model):
             norm = self.norm_pdf.estimate(xx.copy().astype(float).tolist())
             mals.append(mal)
             norms.append(norm)
-            mal_rec = pd.DataFrame(data=np.concatenate([xx, mal]), columns=['recon-error', 'kde-prediction'])
-            norm_rec = pd.DataFrame(data=np.concatenate([xx, norm]), columns=['recon-error', 'kde-prediction'])
+            mal_rec = pd.DataFrame(data=np.stack([xx.reshape(-1), mal.reshape(-1)]).T,
+                                   columns=['recon-error', 'kde-prediction'])
+            norm_rec = pd.DataFrame(data=np.stack([xx.reshape(-1), norm.reshape(-1)]).T,
+                                    columns=['recon-error', 'kde-prediction'])
             mal_rec.to_csv(self.run_dir + '/spark-kde-mal-batch-' + str(batch_nr) + '.csv')
             norm_rec.to_csv(self.run_dir + '/spark-kde-norm-batch-' + str(batch_nr) + '.csv')
             batch_nr += 1
