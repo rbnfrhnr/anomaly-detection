@@ -1,6 +1,8 @@
+import math
 import os
 
 import numpy as np
+import pandas as pd
 from pyspark.mllib.stat import KernelDensity
 from pyspark.sql import SparkSession
 from tensorflow import keras
@@ -8,11 +10,18 @@ from tensorflow import keras
 import utils
 
 
+def batch(iterable, n=1):
+    l = len(iterable)
+    for ndx in range(0, l, n):
+        yield iterable[ndx:min(ndx + n, l)]
+
+
 class KDESparkDownstream(keras.Model):
 
     def __init__(self, **params):
         super(KDESparkDownstream, self).__init__()
         self.databrick_cfg = params['downstream']['tasks']['kde-spark']
+        self.run_dir = params['run-dir']
         os.environ['DEBUG_IGNORE_VERSION_MISMATCH'] = str(self.databrick_cfg['ignore-version-mismatch'])
         os.environ['PYSPARK_PYTHON'] = "/usr/local/bin/python3.8"
         os.environ['PYSPARK_DRIVER_PYTHON'] = "/usr/local/bin/python3.8"
@@ -42,16 +51,29 @@ class KDESparkDownstream(keras.Model):
         return self
 
     def predict(self, x, **kwargs):
-        mal = self.mal_pdf.estimate(x.copy().astype(float).tolist())
-        norm = self.norm_pdf.estimate(x.copy().astype(float).tolist())
-        return mal > norm
+        norms, mals = self.predict2(x, **kwargs)
+        return mals > norms
 
     def predict2(self, x, **kwargs):
         # x1 = self.sc.parallelize(x)
         # x2 = self.sc.parallelize(x.copy)
-        mal = self.mal_pdf.estimate(x.copy().astype(float).tolist())
-        norm = self.norm_pdf.estimate(x.copy().astype(float).tolist())
-        return norm, mal
+        size = math.floor(x / 10)
+        batch_nr = 0
+        mals = []
+        norms = []
+        for xx in batch(x, size):
+            mal = self.mal_pdf.estimate(xx.copy().astype(float).tolist())
+            norm = self.norm_pdf.estimate(xx.copy().astype(float).tolist())
+            mals.append(mal)
+            norms.append(norm)
+            mal_rec = pd.DataFrame(data=[xx, mal], columns=['recon-error', 'kde-prediction'])
+            norm_rec = pd.DataFrame(data=[xx, norm], columns=['recon-error', 'kde-prediction'])
+            mal_rec.to_csv(self.run_dir + '/spark-kde-mal-batch-' + str(batch_nr) + '.csv')
+            norm_rec.to_csv(self.run_dir + '/spark-kde-norm-batch-' + str(batch_nr) + '.csv')
+            batch_nr += 1
+        mals = np.concatenate(mals)
+        norms = np.concatenate(norms)
+        return norms, mals
 
 
 if __name__ == '__main__':
