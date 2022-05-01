@@ -40,8 +40,11 @@ class KDESparkDownstream(keras.Model):
         self.mal_pdf = KernelDensity()
 
     def fit(self, x, y, **kwargs):
+        n_samples = 100000
         x_norm = x[np.where(y == 0)]
+        x_norm = np.random.choice(x_norm, n_samples, replace=False) if x_norm.shape[0] > n_samples else x_norm
         x_mal = x[np.where(y == 1)]
+        x_mal = np.random.choice(x_mal, n_samples, replace=False) if x_mal.shape[0] > n_samples else x_mal
 
         # self.mal_pdf = KernelDensity(kernel='gaussian', bandwidth=0.1).fit(x_mal.reshape(-1, 1))
         x_norm = self.sc.parallelize(x_norm.astype(float).tolist())
