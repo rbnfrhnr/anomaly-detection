@@ -58,7 +58,7 @@ preprocessing:
 
   # list of noise, noise-replace, reverse, reverse-replace
   augmentation: [ noise ]
-  base-augmentation: [ three-fourth-data ]
+  base-augmentation: [ three-quarter-data ]
 
 downstream:
   tasks:
