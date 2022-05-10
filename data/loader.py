@@ -1,5 +1,8 @@
 import os
+
+import numpy as np
 import pandas as pd
+
 import utils
 from data import preprocessing
 
@@ -30,6 +33,12 @@ def load(config):
     train_cache_file = cache_location + train_cache_name + '.csv'
     preprcs_params = config['preprocessing']['params']
     preprocess_method = get_preprocess_method(config['preprocessing']['type'])
+    augmentations = []
+    base_augmentations = []
+    if 'preprocessing' in config:
+        augmentations = config['preprocessing']['augmentation'] if 'augmentation' in config['preprocessing'] else []
+        base_augmentations = config['preprocessing']['base-augmentation'] if 'base-augmentation' in config[
+            'preprocessing'] else []
 
     if os.path.isfile(train_cache_file) and not override_cache:
         train = pd.read_csv(train_cache_file, index_col=0)
@@ -69,6 +78,18 @@ def load(config):
 
     train_norm, train_mal = utils.split_mal_norm(train)
     train_norm = train_norm.drop(columns=['class']).values
+    train_norm = utils.reshape_for_rnn(train_norm)
     train_mal = train_mal.drop(columns=['class']).values
+    train_mal = utils.reshape_for_rnn(train_mal)
+    base_norm = train_norm.copy()
+    base_mal = train_mal.copy()
+    for base_augmentation in base_augmentations:
+        base_norm = utils.base_augmentation(base_norm, base_augmentation)
+        base_mal = utils.base_augmentation(base_mal, base_augmentation)
+    train_norm = base_norm
+    train_mal = base_mal
+    for augmentation in augmentations:
+        train_norm = np.concatenate([base_norm, utils.augment(base_norm, augmentation)])
+        # train_mal = np.concatenate([base_mal, utils.augment(base_mal, augmentation)])
 
-    return utils.reshape_for_rnn(train_norm), utils.reshape_for_rnn(train_mal), test_group_data
+    return train_norm, train_mal, test_group_data

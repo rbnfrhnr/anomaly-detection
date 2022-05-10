@@ -1,5 +1,5 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: template-ucr
+experiment-name: no-augmentation
 
 # yes / no
 use-gpu: no
@@ -53,7 +53,7 @@ preprocessing:
   time-steps: dynamic
   # small, medium, large (see preprocessing.py)
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: [ noise, time-shift, reverse ]
+#  augmentation: [ noise, time-shift, reverse ]
 #  augmentation: [ ]
 
 downstream:
@@ -73,12 +73,12 @@ downstream:
 
 logging:
   logger-name: anomaly-detection
-  log-location: ./runs
+  log-location: ./runs/ucr-subset/no-augmentation
   #copies the preprocessed data to the run dir (the same data as the cached one)
   copy-data: false
   use-wandb: true
 
 
   wandb:
-    project: test-project
+    project: ucr-subset-no-augmentation
     entity: lbl-crd

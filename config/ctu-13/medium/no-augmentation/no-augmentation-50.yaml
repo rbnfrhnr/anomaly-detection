@@ -1,5 +1,5 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: template-rvae-gpu-apu
+experiment-name: no-augmentation-50-data
 
 # yes/no
 use-gpu: yes
@@ -13,14 +13,14 @@ model:
     encoding-layers:
       - class-name: GRU
         arguments:
-          units: 30
+          units: 10
       - class-name: LeakyReLU
         arguments:
           alpha: 0.1
     decoding-layers:
       - class-name: GRU
         arguments:
-          units: 30
+          units: 10
           return_sequences: True
     optimizer:
       class-name: Adam
@@ -28,10 +28,10 @@ model:
 
 
 autoencoder:
-  latent-dim: 10
+  latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 10
+  epochs: 500
   batch-size: 4096
 
 data:
@@ -50,7 +50,7 @@ data:
 
 preprocessing:
   # small, medium, large (see preprocessing.py)
-  type: large
+  type: medium
   # const params for specific preprocessing method. will be passed as **kwargs
   params:
     period_len: 60
@@ -62,28 +62,22 @@ preprocessing:
     override: false
 
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: None
+  augmentation: [ ]
+  base-augmentation: [ half-data ]
 
 downstream:
-  #  tasks: [ best-fit-pdf]
   tasks:
-    kde-spark:
-      host: https://adb-5601663985573002.2.azuredatabricks.net/?o=5601663985573002#
-      token: [ token ]
-      cluster: 0316-083813-1jeu518e
-      ignore-version-mismatch: 1
-      #      org-id: llaa
-      port: 15001
+    kde:
     best-fit-pdf:
 
 logging:
   logger-name: anomaly-detection
-  log-location: ./runs
+  log-location: ./runs/ctu-13/medium
   #copies the preprocessed data to the run dir (the same data as the cached one)
   copy-data: false
   use-wandb: true
 
 
   wandb:
-    project: ctu-13-augment-test
+    project: ctu-13-medium
     entity: lbl-crd

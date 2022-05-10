@@ -2,26 +2,19 @@
 experiment-name: template-ucr
 
 # yes / no
-use-gpu: no
+use-gpu: yes
+use-tf: no
 
 model:
   type: autoencoder
-  sub-type: RNN
+  sub-type: SubsequenceRNN
 
   # specific to model-type and sub-type
   config:
-    encoding-layers:
-      - class-name: GRU
-        arguments:
-          units: 10
-      - class-name: LeakyReLU
-        arguments:
-          alpha: 0.1
-    decoding-layers:
-      - class-name: GRU
-        arguments:
-          units: 10
-          return_sequences: True
+    latent-dim: 10
+    n-subsequences: 10
+    ranges: [ 1,199 ]
+#    subsequences:
     optimizer:
       class-name: Adam
 #      args:
@@ -31,13 +24,13 @@ autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 100
+  epochs: 1500
   batch-size: 1024
 
 data:
   data-set: ucr
   location: /home/robin/Documents/lbnl/crd/datasets/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
-  train-sets: [ '006' ]
+  train-sets: [ '126' ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
   #    all: [ 803, 805, 806, 820 ]
@@ -50,10 +43,10 @@ data:
 preprocessing:
   # either integer of fixed length or 'dynamic'
   # if set to 'dynamic', the time-steps attribute will be replaced after calculation of the window
-  time-steps: dynamic
+  time-steps: 200
   # small, medium, large (see preprocessing.py)
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: [ noise, time-shift, reverse ]
+#  augmentation: [ noise, time-shift, reverse ]
 #  augmentation: [ ]
 
 downstream:

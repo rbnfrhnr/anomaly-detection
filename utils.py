@@ -5,6 +5,7 @@ import os
 import random
 from datetime import datetime
 from pathlib import Path
+from sklearn.preprocessing import MinMaxScaler
 
 import numpy as np
 import pandas as pd
@@ -16,9 +17,10 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 from logger.data_logger import DataHandler
-from logger.wandb_logger import WandbHandler
 from logger.stream_handler import CustomStreamHandler
+from logger.wandb_logger import WandbHandler
 from model.rvae import RVAE
+from model.subsequenceRNN import SubsequenceRNNKeras
 
 files = [
     'capture20110810.binetflow',
@@ -70,23 +72,12 @@ def save(frame, name):
 def split_mal_norm(ctu_data):
     bot_activity = ctu_data[ctu_data['class'] == 'botnet']
     normal_activity = ctu_data[(ctu_data['class'] == 'normal') | (ctu_data['class'] == 'background')]
-    # bot_activity.sort_values('date', ascending=True)
-    # normal_activity.sort_values('date', ascending=True)
     return normal_activity, bot_activity
-
-
-def remove_ylabel(frame):
-    return frame.drop(columns=['class'])
 
 
 def reshape_for_rnn(frame, number_of_slice=5):
     count_x = math.floor(frame.shape[0] / number_of_slice)
     return frame[0:number_of_slice * count_x].reshape(count_x, number_of_slice, frame.shape[1])
-
-
-# calculate the kl divergence
-def kl_divergence(p, q):
-    return sum(p[i] * (math.log(p[i] / q[i]) if q[i] > 0 and p[i] > 0 else 0) for i in range(len(p)))
 
 
 def pred(vae, X, axis=(1, 2)):
@@ -134,10 +125,11 @@ def generate_from_rvae(data):
     vae = RVAE(encoder_inputs, encoder_layers, latent_inputs, decoder_layers, kl_weight=0.75)
     vae.compile(optimizer=keras.optimizers.Adam())
 
-    vae.fit(data, epochs=500, batch_size=128)
+    vae.fit(data, epochs=10, batch_size=128)
     samples = np.random.normal(0, 1, (data.shape[0], 1, latent_dim))
     augmented = np.array([vae.decoder.predict(sample) for sample in samples]).reshape(data.shape)
-    augmented = np.maximum(augmented, np.zeros(shape=augmented.shape))
+    # augmented = np.maximum(augmented, np.zeros(shape=augmented.shape))
+    # augmented = MinMaxScaler().fit_transform(augmented.reshape(data.shape[0], -1)).reshape(data.shape)
     return augmented
 
 
@@ -157,45 +149,33 @@ def augment_rvae_generate(data):
     return np.concatenate([data, generate_from_rvae(data)])
 
 
-def augment2(data, type):
-    if type == 'reverse':
-        return reverse(data)
-    if type == 'noise':
-        return add_noise(data)
-    if type == 'noise-replace':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_noise(data)
-    if type == 'reverse-replace':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_reverse(data)
-    if type == 'reverse-fifth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
-        return augment_reverse(data)
-    if type == 'reverse-tenth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
-        return augment_reverse(data)
-    if type == 'time-shift':
-        return augment_time_shift(data)
-    if type == 'time-shift-half':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_time_shift(data)
-    if type == 'time-shift-fifth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
-        return augment_time_shift(data)
-    if type == 'time-shift-tenth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
-        return augment_time_shift(data)
-    if type == 'rvae-generate':
-        return augment_rvae_generate(data)
-    if type == 'rvae-generate-half':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_rvae_generate(data)
+def base_augmentation(data, type):
     if type == 'half-data':
         return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
     if type == 'fifth-data':
         return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
     if type == 'tenth-data':
         return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
+    if type == 'third-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 3)), :]
+    if type == 'two-third-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(2 * data.shape[0] / 3)), :]
+    if type == 'three-quarter-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(3 * data.shape[0] / 4)), :]
+    if type == 'nine-tenth-data':
+        return data[np.random.randint(data.shape[0], size=math.floor(9 * data.shape[0] / 10)), :]
+    return data
+
+
+def augment2(data, type):
+    if type == 'reverse':
+        return reverse(data)
+    if type == 'noise':
+        return add_noise(data)
+    if type == 'time-shift':
+        return augment_time_shift(data)
+    if type == 'rvae-generate':
+        return augment_rvae_generate(data)
     return data
 
 
@@ -204,40 +184,10 @@ def augment(data, type):
         return augment_reverse(data)
     if type == 'noise':
         return augment_noise(data)
-    if type == 'noise-replace':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_noise(data)
-    if type == 'reverse-replace':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_reverse(data)
-    if type == 'reverse-fifth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
-        return augment_reverse(data)
-    if type == 'reverse-tenth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
-        return augment_reverse(data)
     if type == 'time-shift':
-        return augment_time_shift(data)
-    if type == 'time-shift-half':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_time_shift(data)
-    if type == 'time-shift-fifth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
-        return augment_time_shift(data)
-    if type == 'time-shift-tenth':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
         return augment_time_shift(data)
     if type == 'rvae-generate':
         return augment_rvae_generate(data)
-    if type == 'rvae-generate-half':
-        data = data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-        return augment_rvae_generate(data)
-    if type == 'half-data':
-        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 2)), :]
-    if type == 'fifth-data':
-        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 5)), :]
-    if type == 'tenth-data':
-        return data[np.random.randint(data.shape[0], size=math.floor(data.shape[0] / 10)), :]
     return data
 
 
@@ -389,7 +339,7 @@ def setup_run(cfg):
         lgr.addHandler(WandbHandler(**cfg))
 
     print(backend._get_available_gpus())
-    if use_gpu:
+    if use_gpu and 'use-tf' in cfg and cfg['use-tf']:
         sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(log_device_placement=True))
         backend.set_session(sess)
     return cfg
@@ -425,10 +375,20 @@ def create_autoencoder(cfg, feature_dim=None, latent_dim=5, **kwargs):
     return vae
 
 
-def create_model(cfg, **kwargs):
+def create_model(cfg, feature_dim=None, **kwargs):
     model_type = cfg['model']['type']
-    if model_type == 'autoencoder':
-        return create_autoencoder(cfg['model'], latent_dim=cfg['autoencoder']['latent-dim'], **kwargs)
+    model_subtype = cfg['model']['sub-type']
+
+    if model_type == 'autoencoder' and model_subtype == 'RNN':
+        return create_autoencoder(cfg['model'], latent_dim=cfg['autoencoder']['latent-dim'],
+                                  feature_dim=feature_dim, **kwargs)
+    if model_type == 'autoencoder' and model_subtype == 'SubsequenceRNN':
+        latent_dim = cfg['model']['config']['latent-dim']
+        ranges = cfg['model']['config']['ranges']
+        n_subsequences = cfg['model']['config']['n-subsequences']
+        # subsequences = cfg['model']['config']['subsequences']
+
+        return SubsequenceRNNKeras(feature_dim[1], latent_dim, ranges=ranges, n_subsequences=n_subsequences, **cfg)
     return None
 
 
