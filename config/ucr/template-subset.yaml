@@ -1,7 +1,7 @@
 # used as an identifier to group runs and for wandbb logging group
 experiment-name: no-augmentation
 
-# yes/no
+# yes / no
 use-gpu: yes
 
 model:
@@ -31,48 +31,39 @@ autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
   kl-weight: 0.5
-  epochs: 500
-  batch-size: 512
+  epochs: 100
+  batch-size: 1024
 
 data:
-  data-set: 'ctu-13'
-  location: /home/ubuntu/CTU-13-Dataset/
-  train-ctu-sets: [ 3, 4, 5, 7, 10, 11, 12, 13 ]
+  data-set: ucr
+  location: /home/robin/Documents/lbnl/crd/datasets/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  train-sets: [ ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
-    all: [ 1, 2, 6, 8, 9 ]
-    ctu-1-2-9: [ 1, 2, 9 ]
 
 preprocessing:
+  # either integer of fixed length or 'dynamic'
+  # if set to 'dynamic', the time-steps attribute will be replaced after calculation of the window
+  time-steps: dynamic
   # small, medium, large (see preprocessing.py)
-  type: medium
-  # const params for specific preprocessing method. will be passed as **kwargs
-  params:
-    period_len: 60
-    rm_ntp: false
-
-  # preprocessed datasets are 'cached' as csv files
-  cache:
-    location: /home/ubuntu/CTU-13-Dataset/
-    override: false
-
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: [ rvae-generate ]
-#  base-augmentation: [ tenth-data ]
+#  augmentation: [ noise, time-shift, reverse ]
+#  augmentation: [ ]
 
 downstream:
+  #  tasks: [ best-fit-pdf]
   tasks:
     kde:
     best-fit-pdf:
 
 logging:
   logger-name: anomaly-detection
-  log-location: ./runs/ctu-13/medium
+  log-location: ./runs/ucr-subset/no-augmentation
   #copies the preprocessed data to the run dir (the same data as the cached one)
   copy-data: false
   use-wandb: true
 
 
   wandb:
-    project: ctu-13-medium
+    project: ucr-subset
     entity: lbl-crd
