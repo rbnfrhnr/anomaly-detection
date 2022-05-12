@@ -36,7 +36,7 @@ autoencoder:
 
 data:
   data-set: ucr
-  location: /home/robin/Documents/lbnl/crd/datasets/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  location: /home/ubuntu/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
   train-sets: [ ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
