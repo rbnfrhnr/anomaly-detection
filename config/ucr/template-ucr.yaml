@@ -2,7 +2,7 @@
 experiment-name: template-ucr
 
 # yes / no
-use-gpu: no
+use-gpu: yes
 
 model:
   type: autoencoder
@@ -14,7 +14,7 @@ model:
       - class-name: ConvLSTM2D
         arguments:
           filters: 10
-          kernel_size: [3,3]
+          kernel_size: [ 3,3 ]
       - class-name: LeakyReLU
         arguments:
           alpha: 0.1
@@ -22,7 +22,7 @@ model:
       - class-name: ConvLSTM2D
         arguments:
           filters: 5
-          kernel_size: [3,3]
+          kernel_size: [ 3,3 ]
           return_sequences: True
     optimizer:
       class-name: Adam
