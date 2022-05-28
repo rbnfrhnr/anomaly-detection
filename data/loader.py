@@ -1,4 +1,5 @@
 import os
+from sklearn.model_selection import train_test_split
 
 import numpy as np
 import pandas as pd
@@ -118,13 +119,16 @@ def load_by_host(config):
     train = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in train_sets])
     train_norm, train_mal = preprocess_method(train, **preprcs_params)
 
+    train_norm, test_norm = train_test_split(train_norm)
+    train_mal, test_mal = train_test_split(train_mal)
+
     test_group_data = {}
-    for test_group in test_groups:
-        cache_file = cache_location + (test_group + test_group_cache_suffix) + '.csv'
-        test_group_data[test_group] = pd.concat(
-            [fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
-        test_group_data[test_group] = preprocess_method(test_group_data[test_group],
-                                                        **preprcs_params)
+    test_group_data['default'] = (test_norm, test_mal)
+    # for test_group in test_groups:
+    #     test_group_data[test_group] = pd.concat(
+    #         [fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
+    #     test_group_data[test_group] = preprocess_method(test_group_data[test_group],
+    #                                                     **preprcs_params)
 
     base_norm = train_norm.copy()
     base_mal = train_mal.copy()

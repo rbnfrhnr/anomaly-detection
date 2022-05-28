@@ -30,17 +30,18 @@ model:
 autoencoder:
   latent-dim: 5
   # weight for Kullback-Leibler divergence in loss function
-  kl-weight: 0.5
+  kl-weight: 0
   epochs: 500
   batch-size: 512
 
 data:
   data-set: 'ctu-13-by-host'
   location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
-  train-ctu-sets: [ 1 ]
+  train-ctu-sets: [ 4 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
-    all: [ 3 ]
+    bla: [ ]
+#    all: [ 3 ]
 #    ctu-1-2-9: [ 1, 2, 9 ]
 
 preprocessing:
@@ -57,7 +58,7 @@ preprocessing:
     override: True
 
   # list of noise, noise-replace, reverse, reverse-replace
-  augmentation: [  ]
+  augmentation: [ ]
 #  base-augmentation: [ tenth-data ]
 
 downstream:

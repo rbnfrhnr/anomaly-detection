@@ -298,7 +298,7 @@ def preprocess_ctu_medium_by_host(data, period_len, **kwargs):
     time_format = '%Y/%m/%d %H:%M:%S.%f'
     numerical_cols = pd.Series(['SrcBytes', 'TotBytes', 'Dur', 'TotPkts', 'sTos', 'dTos'])
     service_lst = ['dhcp', 'dns', 'http', 'ntp', 'smtp', 'ssh', 'ssl']
-    data = data[~data['Label'].str.contains('Background')]
+    # data = data[~data['Label'].str.contains('Background')]
     data['ts'] = data['StartTime'].apply(lambda time_string: datetime.strptime(time_string, time_format))
     data['rel_start'] = data['ts'] - data['ts'].min()
     data['rel_start_in_s'] = data['rel_start'].apply(lambda s: int(s.total_seconds()))
