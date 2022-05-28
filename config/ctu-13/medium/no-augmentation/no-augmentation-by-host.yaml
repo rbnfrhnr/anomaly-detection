@@ -1,0 +1,78 @@
+# used as an identifier to group runs and for wandbb logging group
+experiment-name: no-augmentation
+
+# yes/no
+use-gpu: yes
+
+model:
+  type: autoencoder
+  sub-type: RNN
+
+  # specific to model-type and sub-type
+  config:
+    encoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+      - class-name: LeakyReLU
+        arguments:
+          alpha: 0.1
+    decoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+          return_sequences: True
+    optimizer:
+      class-name: Adam
+#      args:
+
+
+autoencoder:
+  latent-dim: 5
+  # weight for Kullback-Leibler divergence in loss function
+  kl-weight: 0.5
+  epochs: 500
+  batch-size: 512
+
+data:
+  data-set: 'ctu-13-by-host'
+  location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
+  train-ctu-sets: [ 1 ]
+  # define groups of ctu sets for testing. The model will be tested on all of these groups
+  test-groups:
+    all: [ 3 ]
+#    ctu-1-2-9: [ 1, 2, 9 ]
+
+preprocessing:
+  # small, medium, large (see preprocessing.py)
+  type: medium-by-host
+  # const params for specific preprocessing method. will be passed as **kwargs
+  params:
+    period_len: 60
+    rm_ntp: false
+
+  # preprocessed datasets are 'cached' as csv files
+  cache:
+    location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
+    override: True
+
+  # list of noise, noise-replace, reverse, reverse-replace
+  augmentation: [  ]
+#  base-augmentation: [ tenth-data ]
+
+downstream:
+  tasks:
+    kde:
+    best-fit-pdf:
+
+logging:
+  logger-name: anomaly-detection
+  log-location: ./runs/ctu-13/medium
+  #copies the preprocessed data to the run dir (the same data as the cached one)
+  copy-data: false
+  use-wandb: true
+
+
+  wandb:
+    project: ctu-13-medium
+    entity: lbl-crd

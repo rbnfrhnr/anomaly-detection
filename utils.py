@@ -355,6 +355,7 @@ def create_autoencoder(cfg, feature_dim=None, latent_dim=5, **kwargs):
     enc_layers = cfg['config']['encoding-layers']
     dec_layers = cfg['config']['decoding-layers']
     optimizer = cfg['config']['optimizer']['class-name']
+    kl_weight = kwargs['autoencoder']['kl-weight']
     # optimizer_args = cfg['config']['optimizer']['args']
     optimizer_args = {}
 
@@ -370,7 +371,7 @@ def create_autoencoder(cfg, feature_dim=None, latent_dim=5, **kwargs):
         decoder_layers = getattr(layers, layer['class-name'])(**layer['arguments'])(decoder_layers)
     decoder_layers = layers.Dense(feature_dim[2])(decoder_layers)
 
-    vae = RVAE(encoder_inputs, encoder_layers, latent_inputs, decoder_layers)
+    vae = RVAE(encoder_inputs, encoder_layers, latent_inputs, decoder_layers, kl_weight=kl_weight)
     vae.compile(optimizer=getattr(keras.optimizers, optimizer)(**optimizer_args))
     return vae
 
@@ -381,7 +382,7 @@ def create_model(cfg, feature_dim=None, **kwargs):
 
     if model_type == 'autoencoder' and model_subtype == 'RNN':
         return create_autoencoder(cfg['model'], latent_dim=cfg['autoencoder']['latent-dim'],
-                                  feature_dim=feature_dim, **kwargs)
+                                  feature_dim=feature_dim, **cfg)
     if model_type == 'autoencoder' and model_subtype == 'SubsequenceRNN':
         latent_dim = cfg['model']['config']['latent-dim']
         ranges = cfg['model']['config']['ranges']

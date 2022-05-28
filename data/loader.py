@@ -20,6 +20,8 @@ def get_preprocess_method(preprocess_type='medium'):
         return lambda data, **kwargs: preprocessing.preprocess_CTU(data, **kwargs)
     if preprocess_type == 'stat-3':
         return lambda data, **kwargs: preprocessing.preprocess_stat_3(data, **kwargs)
+    if preprocess_type == 'medium-by-host':
+        return lambda data, **kwargs: preprocessing.preprocess_ctu_medium_by_host(data, **kwargs)
 
 
 def load(config):
@@ -81,6 +83,49 @@ def load(config):
     train_norm = utils.reshape_for_rnn(train_norm)
     train_mal = train_mal.drop(columns=['class']).values
     train_mal = utils.reshape_for_rnn(train_mal)
+    base_norm = train_norm.copy()
+    base_mal = train_mal.copy()
+    for base_augmentation in base_augmentations:
+        base_norm = utils.base_augmentation(base_norm, base_augmentation)
+        base_mal = utils.base_augmentation(base_mal, base_augmentation)
+    train_norm = base_norm
+    train_mal = base_mal
+    for augmentation in augmentations:
+        train_norm = np.concatenate([base_norm, utils.augment(base_norm, augmentation)])
+        # train_mal = np.concatenate([base_mal, utils.augment(base_mal, augmentation)])
+
+    return train_norm, train_mal, test_group_data
+
+
+def load_by_host(config):
+    data_location = config['data']['location']
+    cache_location = config['preprocessing']['cache']['location']
+    override_cache = config['preprocessing']['cache']['override']
+    train_sets = config['data']['train-ctu-sets']
+    test_groups = config['data']['test-groups']
+    train_cache_name = 'train-' + config['preprocessing']['type']
+    test_group_cache_suffix = '-test-' + config['preprocessing']['type']
+    train_cache_file = cache_location + train_cache_name + '.csv'
+    preprcs_params = config['preprocessing']['params']
+    preprocess_method = get_preprocess_method(config['preprocessing']['type'])
+    augmentations = []
+    base_augmentations = []
+    if 'preprocessing' in config:
+        augmentations = config['preprocessing']['augmentation'] if 'augmentation' in config['preprocessing'] else []
+        base_augmentations = config['preprocessing']['base-augmentation'] if 'base-augmentation' in config[
+            'preprocessing'] else []
+
+    train = pd.concat([fetch_set(ctu_set, data_location) for ctu_set in train_sets])
+    train_norm, train_mal = preprocess_method(train, **preprcs_params)
+
+    test_group_data = {}
+    for test_group in test_groups:
+        cache_file = cache_location + (test_group + test_group_cache_suffix) + '.csv'
+        test_group_data[test_group] = pd.concat(
+            [fetch_set(ctu_set, data_location) for ctu_set in test_groups[test_group]])
+        test_group_data[test_group] = preprocess_method(test_group_data[test_group],
+                                                        **preprcs_params)
+
     base_norm = train_norm.copy()
     base_mal = train_mal.copy()
     for base_augmentation in base_augmentations:

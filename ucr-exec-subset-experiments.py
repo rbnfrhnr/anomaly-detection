@@ -12,8 +12,9 @@ if __name__ == '__main__':
                33, 62, 102, 123, 83, 249, 54, 193, 236, 138, 229, 28]
     data_location = cfg['data']['location']
     data_files = [glob(data_location + '/*' + str(subset) + '_*')[0] for subset in subsets]
-    base_augmentations = ['', 'tenth-data', 'fifth-data', 'third-data', 'half-data', 'two-third-data',
-                          'three-quarter-data', 'nine-tenth-data']
+    base_augmentations = ['']
+    # base_augmentations = ['', 'tenth-data', 'fifth-data', 'third-data', 'half-data', 'two-third-data',
+    #                       'three-quarter-data', 'nine-tenth-data']
     base_aug_to_name = {'': '100', 'tenth-data': '10', 'fifth-data': '20', 'third-data': '33', 'half-data': '50',
                         'two-third-data': '66', 'three-quarter-data': '75', 'nine-tenth-data': '90'}
     augmentations = ['None', 'noise', 'reverse', 'time-shift', 'rvae-generate']
