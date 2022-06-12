@@ -37,7 +37,7 @@ autoencoder:
 data:
   data-set: 'ctu-13-by-host'
   location: /home/robin/Documents/lbnl/crd/ctu-13/CTU-13-Dataset/
-  train-ctu-sets: [ 4 ]
+  train-ctu-sets: [ 6 ]
   # define groups of ctu sets for testing. The model will be tested on all of these groups
   test-groups:
     bla: [ ]

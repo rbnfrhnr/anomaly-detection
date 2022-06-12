@@ -328,13 +328,16 @@ def preprocess_ctu_medium_by_host(data, period_len, **kwargs):
     ts = ts.fillna(0)
 
     q = ts.values.reshape(data['SrcAddr'].nunique(), -1, ts.shape[-1])
-    b = q[:, 0:5 * math.floor(q.shape[1] / 5):, ]
+    b = q[:, 0:10 * math.floor(q.shape[1] / 10):, ]
     c = b.reshape(-1, b.shape[-1])
-    c = c.reshape(-1, 5, c.shape[-1])
+    c = c.reshape(-1, 10, c.shape[-1])
     z = np.unique((c[:, :, c.shape[-1] - 1] == 1).nonzero()[0])
     p = (~np.isin(np.arange(0, c.shape[0]), z)).nonzero()
     mal = c[z]
     norm = c[p]
+    norm = norm[(np.sum(np.sum(norm, axis=2), axis=1) > 0).nonzero()[0]]
+    mal = mal[(np.sum(np.sum(mal, axis=2), axis=1) > 0).nonzero()[0]]
+    print('norm shape', norm.shape, 'mal shape', mal.shape)
     return norm[:, :, :norm.shape[-1]], mal[:, :, :mal.shape[-1]]
 
 
