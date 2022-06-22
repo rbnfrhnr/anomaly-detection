@@ -1,7 +1,7 @@
-import utils
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+
+import utils
 
 
 def evaluate(test_data, vae, downstream_model, scenario, task, **config):
@@ -44,35 +44,55 @@ def evaluate(test_data, vae, downstream_model, scenario, task, **config):
                        data=np.stack([recon_err, score_norm, score_mal, y_2], axis=1))
     logger.info('', extra={'data': {'context': 'eval', 'entity': log_name, 'item': 'raw-data', 'data': log}})
 
-    # png_file_name = config['run-dir'] + '/' + context + '-' + entity + '-actual-vs-predict.png'
-    # padding = 3
-    # real_idx = np.argwhere(y_2 == True).reshape(-1)
-    # anomaly_scores = np.repeat(score_norm, t_steps)
-    # start_real = real_idx[0] - padding
-    # end_real = real_idx[-1] + padding
-    # start_pred = curent_idx[0] - padding
-    # end_pred = curent_idx[-1] + padding
-    # x_real = np.arange(start_real * t_steps, end_real * t_steps)
-    # x_pred = np.arange(start_pred * t_steps, end_pred * t_steps)
-    # _, ax = plt.subplots(3, 1, figsize=(17, 10))
-    # ax[0].plot(x_real, X[start_real:end_real].reshape(-1), label='test data')
-    # ax[0].fill_between((real_idx * t_steps) + ([0] * (real_idx.shape[0] - 1) + [t_steps]), [1] * real_idx.shape[0],
-    #                    alpha=0.2)
-    # ax[0].plot(x_real, anomaly_scores[start_real * t_steps:end_real * t_steps], label='normality score')
-    # ax[0].legend()
-    # ax[1].plot(x_pred, X[start_pred:end_pred].reshape(-1), label='test data')
-    # ax[1].fill_between((curent_idx * t_steps) + ([0] * (curent_idx.shape[0] - 1) + [t_steps]),
-    #                    [1] * curent_idx.shape[0], alpha=0.2)
-    # ax[1].plot(x_pred, anomaly_scores[start_pred * t_steps:end_pred * t_steps], label='normality score')
-    # ax[1].legend()
-    # ax[2].plot(np.arange(X.shape[0] * t_steps), X.reshape(-1), label='test data')
-    # ax[2].plot(np.arange(X.shape[0] * t_steps), anomaly_scores, alpha=0.4, label='normality score')
-    # ax[2].fill_between((real_idx * t_steps) + ([0] * (real_idx.shape[0] - 1) + [t_steps]), [1] * real_idx.shape[0],
-    #                    alpha=0.3, color='red',
-    #                    label='real anomaly')
-    # ax[2].fill_between((curent_idx * t_steps) + ([0] * (curent_idx.shape[0] - 1) + [t_steps]), [1] * real_idx.shape[0],
-    #                    alpha=0.3, color='grey',
-    #                    label='predicted anomaly')
-    # ax[2].legend()
-    # plt.savefig(png_file_name)
-    # plt.show()
+
+def evaluate2(test_data, vae, downstream_model, scenario, task, **config):
+    logger = utils.get_logger(**config)
+    window_size = config['preprocessing']['time-steps']
+    X_original, y = test_data
+    X = X_original
+    indexer = np.arange(window_size)[None, :] + 1 * np.arange(X.shape[0] - window_size - 1)[:, None]
+    X_sliding = X[indexer]
+    X_sliding = X_sliding.reshape(-1, window_size, 1)
+    score_norm, score_mal, recon_err = utils.predict2(vae, downstream_model, X_sliding, axis=(1, 2))
+
+    idx = np.arange(X_sliding.shape[0])
+
+    dim = score_mal.shape[0]
+    matrix = np.zeros(shape=(dim, dim))
+    for i in range(dim):
+        matrix[i][i:min(i + window_size, dim)] = np.repeat(score_norm[i], min(window_size, dim - i))
+    mean_window = np.mean(matrix, axis=0, where=(matrix > 0))
+    mean_window[np.isnan(mean_window)] = np.inf
+    min_idx = 0
+    min_val = np.inf
+    for i in range(0, mean_window.shape[0]):
+        current = np.mean(mean_window[i: i + window_size])
+        if current < min_val:
+            min_val = current
+            min_idx = i
+
+    predicted_idx = np.arange(min_idx, min_idx + window_size)
+    actual_idx = (y == 1).nonzero()[0]
+
+    found = np.in1d(predicted_idx, actual_idx).nonzero()[0].shape[0] > 0
+
+    entity = 'scenario-' + str(scenario)
+    context = 'eval-' + task
+    logger.info('', extra={
+        'summary': {'context': context, 'entity': entity, 'item': 'binary-anomaly-found',
+                    'data': found}})
+    logger.info('', extra={
+        'summary': {'context': context, 'entity': entity, 'item': 'binary-anomaly-found-int',
+                    'data': int(found)}})
+    logger.info('', extra={
+        'summary': {'context': context, 'entity': entity, 'item': 'anomaly-starting-index',
+                    'data': min_idx}})
+
+    log_name = 'reconstruction-error-mean'
+    log = pd.DataFrame(columns=['mean-score-norm', 'label'], data=np.stack([mean_window, y[:-window_size - 1]], axis=1))
+    logger.info('', extra={'data': {'context': task + '-eval', 'entity': log_name, 'item': 'raw-data', 'data': log}})
+
+    log_name = 'reconstruction-error'
+    log = pd.DataFrame(columns=['recon-err', 'score-norm', 'score-mal', 'label'],
+                       data=np.stack([recon_err, score_norm, score_mal, y[:-window_size - 1]], axis=1))
+    logger.info('', extra={'data': {'context': task + '-eval', 'entity': log_name, 'item': 'raw-data', 'data': log}})

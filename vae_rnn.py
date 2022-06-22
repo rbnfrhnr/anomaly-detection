@@ -48,3 +48,4 @@ if __name__ == '__main__':
         evaluator = get_evaluator(data_set)
         for scenario in test_scenarios:
             evaluator(test_scenarios[scenario], model, downstream_model, scenario, task, **config)
+    utils.save_cfg(config)

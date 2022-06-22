@@ -88,6 +88,13 @@ def load2(cfg):
     anomaly_to = int(dataset_info[6])
     anomaly_range = np.arange(anomaly_from, anomaly_to)
 
+    if window_size == 'dynamic':
+        periodicity = utils.get_periodicity(data[:train_to])
+        window_size = np.round(window_size)
+        cfg['preprocessing']['time-steps-old'] = 'dynamic'
+
+    cfg['preprocessing']['time-steps'] = int(window_size)
+
     train_data = data[:train_to]
     train_data = train_data[:math.floor(train_data.shape[0] / window_size) * window_size]
     train_data_normalized = MinMaxScaler().fit_transform(train_data)
@@ -114,7 +121,6 @@ def load2(cfg):
     y_2 = test_y.sum(axis=1)
     y_2 = y_2 >= 1
     y_2 = y_2.reshape(-1)
-
 
     base = train_data_normalized.copy()
     for augmentation in augmentations:

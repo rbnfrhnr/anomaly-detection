@@ -5,8 +5,8 @@ import os
 import random
 from datetime import datetime
 from pathlib import Path
-from sklearn.preprocessing import MinMaxScaler
 
+import matplotlib.colors as colors
 import numpy as np
 import pandas as pd
 import scipy.stats as st
@@ -202,6 +202,17 @@ def predict2(vae, downstream_model, X, axis=(1, 2)):
     return score_norm, score_mal, err
 
 
+def get_periodicity(data):
+    from scipy import fftpack
+    xx = np.arange(0, data.shape[0])
+    ft_populations = fftpack.fft(data, axis=0)
+    frequencies = fftpack.fftfreq(data.shape[0], xx[1] - xx[0])
+    periods = 1 / frequencies
+
+    period = periods[np.argmin(ft_populations[1:])]
+    return np.round(period)
+
+
 def best_fit_distribution(data, bins=200, ax=None):
     """Model data by finding best fit distribution to data"""
     # Get histogram of original data
@@ -311,6 +322,33 @@ def read_cfg(cfg_file):
     if cfg is None:
         print('no cfg present')
     return cfg
+
+
+def red_to_green_cmap():
+    cdict = {'green': ((0.0, 0.0, 0.0),  # no red at 0
+                       (0.2, 0.0, 0.0),
+                       (0.3, 0.0, 0.0),
+                       (0.4, 1.0, 1.0),  # all channels set to 1.0 at 0.5 to create white
+                       # (0.5, 1.0, 1.0),  # all channels set to 1.0 at 0.5 to create white
+                       (1.0, 0.8, 0.8)),  # set to 0.8 so its not too bright at 1
+
+             'red': ((0.0, 0.8, 0.8),  # set to 0.8 so its not too bright at 0
+                     (0.2, 0.8, 0.8),
+                     (0.3, 0.8, 0.8),
+                     (0.4, 1.0, 1.0),  # all channels set to 1.0 at 0.5 to create white
+                     # (0.5, 1.0, 1.0),  # all channels set to 1.0 at 0.5 to create white
+                     (1.0, 0.0, 0.0)),  # no green at 1
+
+             'blue': ((0.0, 0.0, 0.0),
+                      (0.2, 0.0, 0.0),
+                      (0.3, 0.0, 0.0),
+                      (0.4, 1.0, 0.5),
+                      # (0.5, 1.0, 0.5),
+                      (1.0, 0.0, 0.0)),  # no blue at 1
+             }
+
+    # cdict = ["red", "yellow", "green"]
+    return colors.LinearSegmentedColormap('RdGn', cdict)
 
 
 def save_cfg(cfg):
