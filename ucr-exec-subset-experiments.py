@@ -19,7 +19,8 @@ if __name__ == '__main__':
     #                       'three-quarter-data', 'nine-tenth-data']
     base_aug_to_name = {'': '100', 'tenth-data': '10', 'fifth-data': '20', 'third-data': '33', 'half-data': '50',
                         'two-third-data': '66', 'three-quarter-data': '75', 'nine-tenth-data': '90'}
-    augmentations = ['None', 'noise', 'reverse', 'time-shift', 'rvae-generate']
+    # augmentations = ['None', 'noise', 'reverse', 'time-shift', 'rvae-generate']
+    augmentations = ['None']
     augmentations_to_name = {'None': 'no-augmentation',
                              'noise': 'noise', 'reverse': 'reverse', 'time-shift': 'time-shift',
                              'rvae-generate': 'rvae-generate'}

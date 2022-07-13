@@ -5,7 +5,7 @@ from glob import glob
 import yaml
 from itertools import product
 
-CONFIG_LOCATION = './config/ucr/run-templates/window-size'
+CONFIG_LOCATION = './config/ucr/run-templates/window-size-dset-139'
 
 if __name__ == '__main__':
     config_files = glob(CONFIG_LOCATION + '/*.yaml')

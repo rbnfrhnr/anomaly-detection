@@ -1,0 +1,50 @@
+autoencoder:
+  batch-size: 512
+  epochs: 500
+  kl-weight: 0.5
+  latent-dim: 5
+data:
+  data-set: ucr
+#  location: /home/ubuntu/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  location: /home/robin/Documents/lbnl/crd/datasets/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  test-groups: null
+  train-sets:
+  - '138'
+downstream:
+  tasks:
+    best-fit-pdf: null
+    kde: null
+experiment-name: no-augmentation-100
+logging:
+  copy-data: false
+  log-location: ./runs/ucr-subset/no-augmentation
+  logger-name: anomaly-detection
+  use-wandb: true
+  wandb:
+    entity: lbl-crd
+    project: ucr-subset
+model:
+  config:
+    decoding-layers:
+    - arguments:
+        return_sequences: true
+        units: 10
+      class-name: GRU
+    encoding-layers:
+    - arguments:
+        units: 10
+      class-name: GRU
+    - arguments:
+        alpha: 0.1
+      class-name: LeakyReLU
+    optimizer:
+      class-name: Adam
+  sub-type: RNN
+  type: autoencoder
+preprocessing:
+  augmentations:
+  - None
+  base-augmentations:
+  - ''
+  time-steps: 5
+use-gpu: true

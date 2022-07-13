@@ -1,0 +1,65 @@
+# used as an identifier to group runs and for wandbb logging group
+experiment-name: no-augmentation-time-window-60
+
+# yes / no
+use-gpu: yes
+
+model:
+  type: autoencoder
+  sub-type: RNN
+
+  # specific to model-type and sub-type
+  config:
+    encoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+      - class-name: LeakyReLU
+        arguments:
+          alpha: 0.1
+    decoding-layers:
+      - class-name: GRU
+        arguments:
+          units: 10
+          return_sequences: True
+    optimizer:
+      class-name: Adam
+#      args:
+
+
+autoencoder:
+  latent-dim: 5
+  # weight for Kullback-Leibler divergence in loss function
+  kl-weight: 0.5
+  epochs: 500
+  batch-size: 512
+
+data:
+  data-set: ucr
+#  location: /home/ubuntu/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  location: /home/ubuntu/AnomalyDatasets_2021/UCR_TimeSeriesAnomalyDatasets2021/FilesAreInHere/UCR_Anomaly_FullData
+  train-sets: [ 139 ]
+  # define groups of ctu sets for testing. The model will be tested on all of these groups
+  test-groups:
+
+preprocessing:
+  # either integer of fixed length or 'dynamic'
+  # if set to 'dynamic', the time-steps attribute will be replaced after calculation of the window
+  time-steps: 60
+
+downstream:
+  tasks:
+    kde:
+    best-fit-pdf:
+
+logging:
+  logger-name: anomaly-detection
+  log-location: ./runs/ucr-subset/time-window-smoothing
+  #copies the preprocessed data to the run dir (the same data as the cached one)
+  copy-data: false
+  use-wandb: true
+
+
+  wandb:
+    project: ucr-subset-smoothing-window-size
+    entity: lbl-crd
