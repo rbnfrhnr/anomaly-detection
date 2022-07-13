@@ -1,5 +1,5 @@
 # used as an identifier to group runs and for wandbb logging group
-experiment-name: no-augmentation-time-window-110
+experiment-name: no-augmentation-time-window-235
 
 # yes / no
 use-gpu: yes
@@ -45,7 +45,7 @@ data:
 preprocessing:
   # either integer of fixed length or 'dynamic'
   # if set to 'dynamic', the time-steps attribute will be replaced after calculation of the window
-  time-steps: 120
+  time-steps: 235
 
 downstream:
   tasks:
